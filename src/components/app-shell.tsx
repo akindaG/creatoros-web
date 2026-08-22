@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 const nav = [
@@ -29,6 +29,8 @@ export function Logo({ compact = false }: { compact?: boolean }) {
 
 export default function AppShell({ children, title, subtitle, actions }: { children: ReactNode; title: string; subtitle?: string; actions?: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  function logout(){ localStorage.removeItem("creatoros_token"); router.push("/login"); }
   return (
     <div className="min-h-screen premium-grid pb-20 lg:pb-0">
       <aside className="desktop-sidebar fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/[.055] bg-[#030816]/90 backdrop-blur-2xl">
@@ -41,7 +43,7 @@ export default function AppShell({ children, title, subtitle, actions }: { child
         </nav>
         <div className="border-t border-white/[.055] p-4">
           <div className="rounded-2xl border border-violet-300/10 bg-gradient-to-br from-violet-500/[.09] to-emerald-400/[.025] p-4"><div className="kicker">MVP Workspace</div><div className="mt-2 text-xs leading-5 text-[#8794ad]">Everything needed for your final CreatorOS demo in one place.</div></div>
-          <div className="mt-3 flex items-center gap-3 rounded-xl px-2 py-2"><div className="grid h-9 w-9 place-items-center rounded-full border border-violet-300/20 bg-violet-500/10 text-xs font-bold text-violet-100">CR</div><div className="min-w-0"><div className="truncate text-xs font-semibold text-white">Creator Account</div><div className="text-[10px] text-[#6f7a91]">Demo workspace</div></div></div>
+          <div className="mt-3 flex items-center gap-3 rounded-xl px-2 py-2"><div className="grid h-9 w-9 place-items-center rounded-full border border-violet-300/20 bg-violet-500/10 text-xs font-bold text-violet-100">CR</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold text-white">Creator Account</div><div className="text-[10px] text-[#6f7a91]">Demo workspace</div></div><button onClick={logout} className="rounded-lg px-2 py-1 text-[10px] font-semibold text-[#7f8ba3] transition hover:bg-white/[.04] hover:text-rose-200">Log out</button></div>
         </div>
       </aside>
       <main className="app-main min-h-screen transition-[margin] duration-200 lg:ml-60">
