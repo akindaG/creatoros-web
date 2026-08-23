@@ -124,11 +124,6 @@ export default function AppShell({ children, title, subtitle, actions }: { child
   }, []);
 
   useEffect(() => {
-    setMoreOpen(false);
-    setNotificationsOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     if (!commandOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
