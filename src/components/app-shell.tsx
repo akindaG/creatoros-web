@@ -50,8 +50,8 @@ type UserProfile = { name: string; email: string; role?: string };
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" aria-label="CreatorOS AI home" className="group flex items-center gap-2.5">
-      <div className="relative flex h-11 w-14 shrink-0 items-center justify-center">
+    <Link href="/" aria-label="CreatorOS AI home" className="group flex min-w-0 items-center gap-2.5">
+      <div className="relative flex h-10 w-12 shrink-0 items-center justify-center sm:h-11 sm:w-14">
         <div className="absolute h-9 w-9 rounded-full bg-violet-500/15 blur-xl transition duration-300 group-hover:bg-violet-400/30" />
         <Image
           src="/creatoros-mark.svg"
@@ -59,7 +59,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
           width={56}
           height={46}
           priority
-          className="relative h-11 w-14 object-contain drop-shadow-[0_0_14px_rgba(37,99,255,.24)] transition duration-300 group-hover:scale-[1.04]"
+          className="relative h-10 w-12 object-contain drop-shadow-[0_0_14px_rgba(37,99,255,.24)] transition duration-300 group-hover:scale-[1.04] sm:h-11 sm:w-14"
         />
       </div>
       {!compact && (
@@ -123,6 +123,15 @@ export default function AppShell({ children, title, subtitle, actions }: { child
     return () => window.removeEventListener("keydown", handleKeyboard);
   }, []);
 
+  useEffect(() => {
+    if (!commandOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [commandOpen]);
+
   const initials = useMemo(() => {
     if (!profile?.name) return "CR";
     return profile.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "CR";
@@ -149,9 +158,9 @@ export default function AppShell({ children, title, subtitle, actions }: { child
 
   if (!sessionReady && !profile) {
     return (
-      <div className="premium-grid relative grid min-h-screen place-items-center overflow-hidden px-6">
+      <div className="premium-grid relative grid min-h-[100dvh] place-items-center overflow-hidden px-5 py-8 sm:px-6">
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/10 blur-[90px]" />
-        <div className="glass neon-border relative rounded-[24px] px-8 py-7 text-center shadow-[0_35px_100px_rgba(0,0,0,.45)]">
+        <div className="glass neon-border relative w-full max-w-sm rounded-[24px] px-6 py-7 text-center shadow-[0_35px_100px_rgba(0,0,0,.45)] sm:px-8">
           <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-violet-300/15 bg-violet-500/10 text-violet-200 shadow-[0_0_30px_rgba(124,58,237,.14)]">✦</div>
           <div className="mt-4 text-sm font-semibold text-white">Opening CreatorOS workspace</div>
           <div className="muted mt-1 text-xs">Verifying your secure session...</div>
@@ -162,7 +171,7 @@ export default function AppShell({ children, title, subtitle, actions }: { child
   }
 
   return (
-    <div className="min-h-screen premium-grid pb-20 lg:pb-0">
+    <div className="premium-grid min-h-[100dvh] overflow-x-clip pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:pb-0">
       <aside className="desktop-sidebar fixed inset-y-0 left-0 z-40 flex w-[264px] flex-col border-r border-white/[.055] bg-[#030816]/92 shadow-[24px_0_80px_rgba(0,0,0,.12)] backdrop-blur-2xl">
         <div className="border-b border-white/[.045] px-5 py-5"><Logo /></div>
 
@@ -213,24 +222,24 @@ export default function AppShell({ children, title, subtitle, actions }: { child
         </div>
       </aside>
 
-      <main className="app-main min-h-screen transition-[margin] duration-200 lg:ml-[264px]">
-        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-white/[.055] bg-[#050a18]/78 px-4 shadow-[0_10px_40px_rgba(0,0,0,.08)] backdrop-blur-2xl sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="lg:hidden"><Logo compact /></div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2"><h2 className="truncate text-[15px] font-semibold tracking-[-.025em] text-[#eef2ff]">{title}</h2>{currentItem && <span className="hidden rounded-full border border-white/[.05] bg-white/[.018] px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.12em] text-[#66738a] xl:inline">V1 workspace</span>}</div>
+      <main className="app-main min-h-[100dvh] min-w-0 transition-[margin] duration-200 lg:ml-[264px]">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-2 border-b border-white/[.055] bg-[#050a18]/86 px-3 shadow-[0_10px_40px_rgba(0,0,0,.08)] backdrop-blur-2xl sm:gap-3 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <div className="shrink-0 lg:hidden"><Logo compact /></div>
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2"><h2 className="truncate text-[13px] font-semibold tracking-[-.025em] text-[#eef2ff] sm:text-[15px]">{title}</h2>{currentItem && <span className="hidden rounded-full border border-white/[.05] bg-white/[.018] px-2 py-0.5 text-[8px] font-bold uppercase tracking-[.12em] text-[#66738a] xl:inline">V1 workspace</span>}</div>
               {subtitle && <p className="mt-0.5 hidden truncate text-[10px] text-[#69758d] sm:block">{subtitle}</p>}
             </div>
           </div>
 
-          <div className="relative flex items-center gap-2">
-            <button onClick={() => setCommandOpen(true)} className="secondary-btn hidden !min-h-9 !gap-2 !px-3 text-[11px] sm:inline-flex"><span className="text-[#65728a]">⌕</span><span className="hidden xl:inline">Jump to</span><span className="kbd">⌘K</span></button>
-            {actions}
-            <button onClick={() => setNotificationsOpen((open) => !open)} className="secondary-btn !h-9 !min-h-9 !w-9 !p-0" aria-label="Notifications" aria-expanded={notificationsOpen}>◌</button>
-            <Link href="/settings" aria-label="Open account settings" className="secondary-btn !h-9 !min-h-9 !w-9 !rounded-full !border-violet-300/10 !bg-violet-500/[.07] !p-0 text-[11px] font-bold text-violet-100">{initials}</Link>
+          <div className="app-header-actions relative flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
+            <button onClick={() => setCommandOpen(true)} className="secondary-btn hidden !min-h-9 !gap-2 !px-3 text-[11px] md:inline-flex"><span className="text-[#65728a]">⌕</span><span className="hidden xl:inline">Jump to</span><span className="kbd">⌘K</span></button>
+            <div className="app-header-page-action flex min-w-0 items-center">{actions}</div>
+            <button onClick={() => setNotificationsOpen((open) => !open)} className="secondary-btn !h-9 !min-h-9 !w-9 shrink-0 !p-0" aria-label="Notifications" aria-expanded={notificationsOpen}>◌</button>
+            <Link href="/settings" aria-label="Open account settings" className="secondary-btn !h-9 !min-h-9 !w-9 shrink-0 !rounded-full !border-violet-300/10 !bg-violet-500/[.07] !p-0 text-[11px] font-bold text-violet-100">{initials}</Link>
             {notificationsOpen && (
-              <div className="glass absolute right-10 top-12 z-50 w-[310px] rounded-2xl p-4 shadow-[0_30px_90px_rgba(0,0,0,.5)]">
-                <div className="flex items-center justify-between"><div><div className="kicker">Workspace activity</div><div className="mt-1 text-sm font-semibold text-white">You are all caught up</div></div><span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-300/[.06] text-[#4edea3]">✓</span></div>
+              <div className="glass fixed left-3 right-3 top-[4.75rem] z-50 rounded-2xl p-4 shadow-[0_30px_90px_rgba(0,0,0,.5)] sm:absolute sm:left-auto sm:right-10 sm:top-12 sm:w-[310px]">
+                <div className="flex items-center justify-between gap-3"><div><div className="kicker">Workspace activity</div><div className="mt-1 text-sm font-semibold text-white">You are all caught up</div></div><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-300/[.06] text-[#4edea3]">✓</span></div>
                 <p className="muted mt-3 text-xs leading-5">CreatorOS surfaces publishing failures and workflow errors directly where they happen, so this panel stays focused on system-level alerts.</p>
                 <button onClick={() => setNotificationsOpen(false)} className="mt-4 text-xs font-semibold text-violet-300 hover:text-violet-200">Dismiss</button>
               </div>
@@ -238,36 +247,43 @@ export default function AppShell({ children, title, subtitle, actions }: { child
           </div>
         </header>
 
-        <div className="mx-auto w-full max-w-[1220px] p-4 sm:p-6 lg:p-7">{children}</div>
+        <div className="mx-auto w-full min-w-0 max-w-[1220px] p-3 sm:p-6 lg:p-7">{children}</div>
       </main>
 
-      <nav aria-label="Mobile navigation" className="fixed inset-x-3 bottom-3 z-50 flex items-center justify-around rounded-2xl border border-white/[.08] bg-[#050a18]/94 p-2 shadow-[0_20px_60px_rgba(0,0,0,.5)] backdrop-blur-2xl lg:hidden">
+      <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-2 bottom-2 z-50 flex items-stretch justify-around gap-1 rounded-2xl border border-white/[.08] bg-[#050a18]/94 p-1.5 shadow-[0_20px_60px_rgba(0,0,0,.5)] backdrop-blur-2xl sm:inset-x-3 sm:bottom-3 sm:p-2 lg:hidden">
         {nav.slice(0, 4).map((item) => {
           const active = pathname === item.href;
-          return <Link key={item.href} href={item.href} aria-label={item.label} aria-current={active ? "page" : undefined} className={`grid min-h-12 min-w-12 place-items-center rounded-xl text-base transition ${active ? "border border-violet-300/10 bg-violet-500/15 text-violet-200" : "text-[#67748d]"}`}><span>{item.icon}</span></Link>;
+          return (
+            <Link key={item.href} href={item.href} aria-label={item.label} aria-current={active ? "page" : undefined} className={`flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[9px] font-semibold transition ${active ? "border border-violet-300/10 bg-violet-500/15 text-violet-100" : "text-[#67748d]"}`}>
+              <span className="text-base leading-none">{item.icon}</span>
+              <span className="max-w-full truncate">{item.label === "Content Studio" ? "Studio" : item.label === "AI Assistant" ? "AI" : item.label}</span>
+            </Link>
+          );
         })}
-        <button onClick={() => setMoreOpen((open) => !open)} aria-label="More navigation" aria-expanded={moreOpen} className={`grid min-h-12 min-w-12 place-items-center rounded-xl text-base ${moreOpen || nav.slice(4).some((item) => item.href === pathname) ? "border border-violet-300/10 bg-violet-500/15 text-violet-200" : "text-[#67748d]"}`}>•••</button>
-        {moreOpen && <div className="glass absolute inset-x-0 bottom-[4.5rem] grid grid-cols-2 gap-2 rounded-2xl p-3 shadow-2xl">{nav.slice(4).map((item) => { const active = pathname === item.href; return <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)} aria-current={active ? "page" : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-xs font-semibold ${active ? "bg-violet-500/15 text-violet-100" : "text-[#9aa6bd] hover:bg-white/[.03]"}`}><span className="grid w-5 place-items-center text-sm">{item.icon}</span>{item.label}</Link>; })}</div>}
+        <button onClick={() => setMoreOpen((open) => !open)} aria-label="More navigation" aria-expanded={moreOpen} className={`flex min-h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[9px] font-semibold transition ${moreOpen || nav.slice(4).some((item) => item.href === pathname) ? "border border-violet-300/10 bg-violet-500/15 text-violet-100" : "text-[#67748d]"}`}><span className="text-sm leading-none">•••</span><span>More</span></button>
+        {moreOpen && <div className="glass absolute inset-x-0 bottom-[4.6rem] grid max-h-[60dvh] grid-cols-2 gap-2 overflow-y-auto rounded-2xl p-3 shadow-2xl">{nav.slice(4).map((item) => { const active = pathname === item.href; return <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)} aria-current={active ? "page" : undefined} className={`flex min-h-12 min-w-0 items-center gap-3 rounded-xl px-3 text-xs font-semibold ${active ? "bg-violet-500/15 text-violet-100" : "text-[#9aa6bd] hover:bg-white/[.03]"}`}><span className="grid w-5 shrink-0 place-items-center text-sm">{item.icon}</span><span className="min-w-0 truncate">{item.label}</span></Link>; })}</div>}
       </nav>
 
       {commandOpen && (
-        <div className="fixed inset-0 z-[80] flex items-start justify-center bg-[#01040d]/75 px-4 pt-[12vh] backdrop-blur-md" role="dialog" aria-modal="true" aria-label="CreatorOS quick switcher" onMouseDown={(event) => { if (event.currentTarget === event.target) closeCommand(); }}>
-          <div className="glass neon-border w-full max-w-xl overflow-hidden rounded-[24px] shadow-[0_40px_140px_rgba(0,0,0,.65)]">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#01040d]/75 px-0 pt-0 backdrop-blur-md sm:items-start sm:px-4 sm:pt-[12vh]" role="dialog" aria-modal="true" aria-label="CreatorOS quick switcher" onMouseDown={(event) => { if (event.currentTarget === event.target) closeCommand(); }}>
+          <div className="glass neon-border max-h-[88dvh] w-full max-w-xl overflow-hidden rounded-t-[26px] rounded-b-none shadow-[0_40px_140px_rgba(0,0,0,.65)] sm:max-h-none sm:rounded-[24px]">
+            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-white/10 sm:hidden" />
             <div className="flex items-center gap-3 border-b border-white/[.06] px-4 py-4">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-500/10 text-violet-200">⌕</span>
-              <input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search CreatorOS workspace..." className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#5f6c83]" />
-              <span className="kbd">Esc</span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-violet-500/10 text-violet-200">⌕</span>
+              <input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search CreatorOS workspace..." className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-[#5f6c83] sm:text-sm" />
+              <button onClick={closeCommand} className="secondary-btn !h-9 !min-h-9 !px-2 text-[10px] sm:hidden" aria-label="Close quick switcher">Close</button>
+              <span className="kbd hidden sm:inline-flex">Esc</span>
             </div>
-            <div className="max-h-[52vh] overflow-y-auto p-2">
+            <div className="max-h-[58dvh] overflow-y-auto p-2 sm:max-h-[52vh]">
               {commandResults.length ? commandResults.map((item) => (
-                <Link key={item.href} href={item.href} onClick={closeCommand} className={`group flex items-center gap-3 rounded-xl border px-3 py-3 transition ${pathname === item.href ? "border-violet-300/15 bg-violet-500/[.08]" : "border-transparent hover:border-white/[.05] hover:bg-white/[.025]"}`}>
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.025] text-sm text-violet-200">{item.icon}</span>
-                  <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-white">{item.label}</span><span className="mt-1 block truncate text-[10px] text-[#6f7b92]">{item.description}</span></span>
-                  <span className="text-xs text-[#556278] transition group-hover:translate-x-0.5 group-hover:text-violet-300">↗</span>
+                <Link key={item.href} href={item.href} onClick={closeCommand} className={`group flex min-w-0 items-center gap-3 rounded-xl border px-3 py-3 transition ${pathname === item.href ? "border-violet-300/15 bg-violet-500/[.08]" : "border-transparent hover:border-white/[.05] hover:bg-white/[.025]"}`}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[.025] text-sm text-violet-200">{item.icon}</span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold text-white">{item.label}</span><span className="mt-1 block truncate text-[10px] text-[#6f7b92]">{item.description}</span></span>
+                  <span className="shrink-0 text-xs text-[#556278] transition group-hover:translate-x-0.5 group-hover:text-violet-300">↗</span>
                 </Link>
               )) : <div className="px-5 py-10 text-center"><div className="text-sm font-semibold text-white">No matching workspace</div><div className="muted mt-1 text-xs">Try searching for analytics, calendar, AI or settings.</div></div>}
             </div>
-            <div className="flex items-center justify-between border-t border-white/[.05] px-4 py-3 text-[9px] text-[#56637a]"><span>Navigate without leaving your workflow</span><span>CreatorOS AI</span></div>
+            <div className="flex items-center justify-between border-t border-white/[.05] px-4 py-3 pb-[max(.75rem,env(safe-area-inset-bottom))] text-[9px] text-[#56637a]"><span>Navigate without leaving your workflow</span><span>CreatorOS AI</span></div>
           </div>
         </div>
       )}
