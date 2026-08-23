@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/app-shell";
 import { Card, EmptyState } from "@/components/ui";
@@ -28,20 +28,20 @@ export default function ContentStudioPage() {
   const [error,setError] = useState("");
   const [message,setMessage] = useState("");
 
-  async function loadDrafts(){
+  const loadDrafts=useCallback(async()=>{
     try{const data=await apiFetch<Post[]>("/api/v1/posts?status=draft");setDrafts(data);}
     catch(requestError){setError(requestError instanceof Error?requestError.message:"Could not load drafts");}
     finally{setLoadingDrafts(false);}
-  }
+  },[]);
 
   useEffect(()=>{
     const frame=requestAnimationFrame(()=>{
       const draft=sessionStorage.getItem("creatoros_draft_caption");
       if(draft){setCaption(draft);sessionStorage.removeItem("creatoros_draft_caption");}
+      void loadDrafts();
     });
-    loadDrafts();
     return()=>cancelAnimationFrame(frame);
-  },[]);
+  },[loadDrafts]);
 
   const postAssets=useMemo<Asset[]>(()=>{
     const seen=new Set<string>();
