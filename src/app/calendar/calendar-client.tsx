@@ -34,14 +34,20 @@ export default function CalendarClient({initialDate,postId}:{initialDate:string;
   const weekEnd=useMemo(()=>{const date=new Date(weekStart);date.setDate(date.getDate()+7);return date;},[weekStart]);
 
   useEffect(()=>{
-    const controller=new AbortController();setLoading(true);setPageError("");
+    const controller=new AbortController();
     const query=new URLSearchParams({start:weekStart.toISOString(),end:weekEnd.toISOString()});
     const requests:Promise<unknown>[]=[
-      apiFetch<CalendarItem[]>(`/api/v1/calendar?${query}`,{signal:controller.signal}).then(setItems),
+      apiFetch<CalendarItem[]>(`/api/v1/calendar?${query}`,{signal:controller.signal}).then(data=>{setItems(data);setPageError("");}),
       apiFetch<Post[]>("/api/v1/posts?status=draft",{signal:controller.signal}).then(setDrafts),
     ];
-    if(postId){requests.push(apiFetch<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`,{signal:controller.signal}).then(post=>{setSelectedPost(post);setPlatform(post.platform);}));}else{setSelectedPost(null);}
-    Promise.all(requests).catch(requestError=>{if(!(requestError instanceof DOMException&&requestError.name==="AbortError"))setPageError(requestError instanceof Error?requestError.message:"Could not load calendar");}).finally(()=>setLoading(false));
+    if(postId){
+      requests.push(apiFetch<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`,{signal:controller.signal}).then(post=>{setSelectedPost(post);setPlatform(post.platform);}));
+    }else{
+      requests.push(Promise.resolve().then(()=>setSelectedPost(null)));
+    }
+    Promise.all(requests)
+      .catch(requestError=>{if(!(requestError instanceof DOMException&&requestError.name==="AbortError"))setPageError(requestError instanceof Error?requestError.message:"Could not load calendar");})
+      .finally(()=>setLoading(false));
     return()=>controller.abort();
   },[weekStart,weekEnd,refreshKey,postId]);
 
