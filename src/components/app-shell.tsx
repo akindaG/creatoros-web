@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -20,12 +21,28 @@ type UserProfile = { name: string; email: string; role?: string };
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" aria-label="CreatorOS AI home" className="group flex items-center gap-3">
-      <div className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-xl border border-violet-300/20 bg-[#0b1023] shadow-[0_0_25px_rgba(124,58,237,.18)]">
-        <div className="absolute inset-1 rounded-lg bg-[conic-gradient(from_210deg,#4edea3,#7c3aed,#d2bbff,#4edea3)] opacity-80 blur-[5px]" />
-        <div className="relative grid h-7 w-7 place-items-center rounded-lg bg-[#050816] text-sm font-black text-violet-100">C</div>
+    <Link href="/" aria-label="CreatorOS AI home" className="group flex items-center gap-2.5">
+      <div className="relative flex h-11 w-14 shrink-0 items-center justify-center">
+        <div className="absolute h-9 w-9 rounded-full bg-violet-500/15 blur-xl transition group-hover:bg-violet-400/25" />
+        <Image
+          src="/creatoros-mark.svg"
+          alt=""
+          width={56}
+          height={46}
+          priority
+          className="relative h-11 w-14 object-contain drop-shadow-[0_0_14px_rgba(37,99,255,.24)]"
+        />
       </div>
-      {!compact && <div><div className="text-[15px] font-bold tracking-[-.03em] text-white">CreatorOS <span className="text-violet-300">AI</span></div><div className="text-[9px] font-semibold uppercase tracking-[.18em] text-[#68758f]">Growth Intelligence</div></div>}
+      {!compact && (
+        <div className="min-w-0">
+          <div className="whitespace-nowrap text-[17px] font-semibold tracking-[-.045em] text-white">
+            CreatorOS <span className="bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent">AI</span>
+          </div>
+          <div className="mt-0.5 whitespace-nowrap text-[8px] font-semibold uppercase tracking-[.28em] text-[#71809b]">
+            Growth Intelligence
+          </div>
+        </div>
+      )}
     </Link>
   );
 }
@@ -86,7 +103,7 @@ export default function AppShell({ children, title, subtitle, actions }: { child
   return (
     <div className="min-h-screen premium-grid pb-20 lg:pb-0">
       <aside className="desktop-sidebar fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/[.055] bg-[#030816]/90 backdrop-blur-2xl">
-        <div className="px-6 py-6"><Logo /></div>
+        <div className="px-5 py-5"><Logo /></div>
         <nav className="sidebar-scroll flex-1 overflow-y-auto px-2 py-4">
           {nav.map(([href,label,icon]) => {
             const active = pathname === href;
