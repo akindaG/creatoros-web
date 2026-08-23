@@ -1,4 +1,5 @@
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+export const SESSION_EXPIRED_EVENT = "creatoros:session-expired";
 
 export function getToken(): string {
   if (typeof window === "undefined") return "";
@@ -48,9 +49,7 @@ function responseMessage(body: unknown, status: number): string {
 function expireSessionIfNeeded(status: number, hadToken: boolean) {
   if (status !== 401 || !hadToken || typeof window === "undefined") return;
   clearSession();
-  if (!window.location.pathname.startsWith("/login")) {
-    window.location.href = "/login?expired=1";
-  }
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
 }
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
