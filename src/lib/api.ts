@@ -49,7 +49,7 @@ function expireSessionIfNeeded(status: number, hadToken: boolean) {
   if (status !== 401 || !hadToken || typeof window === "undefined") return;
   clearSession();
   if (!window.location.pathname.startsWith("/login")) {
-    window.location.assign("/login?expired=1");
+    window.location.href = "/login?expired=1";
   }
 }
 
