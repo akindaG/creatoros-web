@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { apiFetch, clearSession, getToken } from "@/lib/api";
 
 const nav = [
   ["/dashboard", "Dashboard", "◫"],
@@ -14,6 +15,8 @@ const nav = [
   ["/social-accounts", "Social Accounts", "◎"],
   ["/settings", "Settings", "⚙"],
 ] as const;
+
+type UserProfile = { name: string; email: string; role?: string };
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -32,7 +35,46 @@ export default function AppShell({ children, title, subtitle, actions }: { child
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  function logout(){ localStorage.removeItem("creatoros_token"); router.replace("/login"); router.refresh(); }
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    if (!getToken()) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    const controller = new AbortController();
+    apiFetch<UserProfile>("/api/v1/users/me", { signal: controller.signal })
+      .then(setProfile)
+      .catch(() => {})
+      .finally(() => setSessionReady(true));
+    return () => controller.abort();
+  }, [pathname, router]);
+
+  const initials = useMemo(() => {
+    if (!profile?.name) return "CR";
+    return profile.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "CR";
+  }, [profile]);
+
+  async function logout() {
+    try { await apiFetch("/api/v1/auth/logout", { method: "POST" }); } catch {}
+    clearSession();
+    router.replace("/login");
+    router.refresh();
+  }
+
+  if (!sessionReady && !profile) {
+    return (
+      <div className="premium-grid grid min-h-screen place-items-center px-6">
+        <div className="glass neon-border rounded-2xl px-7 py-6 text-center">
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-violet-500/10 text-violet-200">✦</div>
+          <div className="mt-4 text-sm font-semibold text-white">Opening CreatorOS workspace</div>
+          <div className="muted mt-1 text-xs">Verifying your secure session...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen premium-grid pb-20 lg:pb-0">
       <aside className="desktop-sidebar fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/[.055] bg-[#030816]/90 backdrop-blur-2xl">
@@ -44,14 +86,14 @@ export default function AppShell({ children, title, subtitle, actions }: { child
           })}
         </nav>
         <div className="border-t border-white/[.055] p-4">
-          <div className="rounded-2xl border border-violet-300/10 bg-gradient-to-br from-violet-500/[.09] to-emerald-400/[.025] p-4"><div className="kicker">MVP Workspace</div><div className="mt-2 text-xs leading-5 text-[#8794ad]">Everything needed for your final CreatorOS demo in one place.</div></div>
-          <div className="mt-3 flex items-center gap-3 rounded-xl px-2 py-2"><div className="grid h-9 w-9 place-items-center rounded-full border border-violet-300/20 bg-violet-500/10 text-xs font-bold text-violet-100">CR</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold text-white">Creator Account</div><div className="text-[10px] text-[#6f7a91]">Demo workspace</div></div><button onClick={logout} className="rounded-lg px-2 py-1 text-[10px] font-semibold text-[#7f8ba3] transition hover:bg-white/[.04] hover:text-rose-200">Log out</button></div>
+          <div className="rounded-2xl border border-violet-300/10 bg-gradient-to-br from-violet-500/[.09] to-emerald-400/[.025] p-4"><div className="kicker">Live Workspace</div><div className="mt-2 text-xs leading-5 text-[#8794ad]">Facebook, Instagram, AI, scheduling and analytics are connected through the CreatorOS API.</div></div>
+          <div className="mt-3 flex items-center gap-3 rounded-xl px-2 py-2"><div className="grid h-9 w-9 place-items-center rounded-full border border-violet-300/20 bg-violet-500/10 text-xs font-bold text-violet-100">{initials}</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold text-white">{profile?.name ?? "Creator Account"}</div><div className="truncate text-[10px] text-[#6f7a91]">{profile?.email ?? "Authenticated"}</div></div><button onClick={logout} className="rounded-lg px-2 py-1 text-[10px] font-semibold text-[#7f8ba3] transition hover:bg-white/[.04] hover:text-rose-200">Log out</button></div>
         </div>
       </aside>
       <main className="app-main min-h-screen transition-[margin] duration-200 lg:ml-60">
         <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-white/[.055] bg-[#050a18]/72 px-4 backdrop-blur-xl sm:px-6">
           <div className="flex min-w-0 items-center gap-3"><div className="lg:hidden"><Logo compact /></div><div className="min-w-0"><h2 className="truncate text-base font-semibold tracking-[-.025em] text-[#e9eeff]">{title}</h2>{subtitle && <p className="mt-0.5 hidden truncate text-[11px] text-[#77839a] sm:block">{subtitle}</p>}</div></div>
-          <div className="relative flex items-center gap-2">{actions}<button onClick={()=>setNotificationsOpen(open=>!open)} className="secondary-btn !h-9 !min-h-9 !w-9 !p-0" aria-label="Notifications" aria-expanded={notificationsOpen}>◌</button><Link href="/settings" aria-label="Open account settings" className="secondary-btn !h-9 !min-h-9 !w-9 !rounded-full !p-0">CR</Link>{notificationsOpen&&<div className="glass absolute right-11 top-12 z-50 w-72 rounded-xl p-4 shadow-2xl"><div className="text-sm font-semibold text-white">You are all caught up</div><p className="muted mt-1 text-xs leading-5">New publishing and growth updates will appear here.</p><button onClick={()=>setNotificationsOpen(false)} className="mt-3 text-xs font-semibold text-violet-300">Dismiss</button></div>}</div>
+          <div className="relative flex items-center gap-2">{actions}<button onClick={()=>setNotificationsOpen(open=>!open)} className="secondary-btn !h-9 !min-h-9 !w-9 !p-0" aria-label="Notifications" aria-expanded={notificationsOpen}>◌</button><Link href="/settings" aria-label="Open account settings" className="secondary-btn !h-9 !min-h-9 !w-9 !rounded-full !p-0">{initials}</Link>{notificationsOpen&&<div className="glass absolute right-11 top-12 z-50 w-72 rounded-xl p-4 shadow-2xl"><div className="text-sm font-semibold text-white">No unread system alerts</div><p className="muted mt-1 text-xs leading-5">Publishing failures are surfaced directly in the relevant CreatorOS workflow.</p><button onClick={()=>setNotificationsOpen(false)} className="mt-3 text-xs font-semibold text-violet-300">Dismiss</button></div>}</div>
         </header>
         <div className="mx-auto w-full max-w-[1180px] p-4 sm:p-6">{children}</div>
       </main>
