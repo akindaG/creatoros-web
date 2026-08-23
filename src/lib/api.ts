@@ -1,4 +1,5 @@
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+export const SESSION_EXPIRED_EVENT = "creatoros:session-expired";
 
 export function getToken(): string {
   if (typeof window === "undefined") return "";
@@ -7,6 +8,19 @@ export function getToken(): string {
   } catch {
     return "";
   }
+}
+
+export function clearSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("creatoros_token");
+  } catch {}
+}
+
+export function mediaUrl(value?: string | null): string {
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${API_BASE}${value.startsWith("/") ? "" : "/"}${value}`;
 }
 
 function responseMessage(body: unknown, status: number): string {
@@ -32,6 +46,12 @@ function responseMessage(body: unknown, status: number): string {
   return `Request failed (${status})`;
 }
 
+function expireSessionIfNeeded(status: number, hadToken: boolean) {
+  if (status !== 401 || !hadToken || typeof window === "undefined") return;
+  clearSession();
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers = new Headers(init.headers);
@@ -39,6 +59,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     headers.set("Content-Type", "application/json");
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, { ...init, headers });
@@ -58,7 +79,22 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   }
 
   if (!response.ok) {
+    expireSessionIfNeeded(response.status, Boolean(token));
     throw new Error(responseMessage(body, response.status));
   }
   return body as T;
+}
+
+export async function apiDownload(path: string): Promise<Blob> {
+  const token = getToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${API_BASE}${path}`, { headers });
+  if (!response.ok) {
+    expireSessionIfNeeded(response.status, Boolean(token));
+    let detail: unknown;
+    try { detail = await response.json(); } catch { detail = null; }
+    throw new Error(responseMessage(detail, response.status));
+  }
+  return response.blob();
 }
