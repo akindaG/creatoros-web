@@ -6,33 +6,45 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiFetch, clearSession, getToken, SESSION_EXPIRED_EVENT } from "@/lib/api";
 
-const navGroups = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  description: string;
+};
+
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
     label: "Workspace",
     items: [
-      ["/dashboard", "Dashboard", "◫", "Overview and growth signals"],
-      ["/content-studio", "Content Studio", "◇", "Media, drafts and publishing prep"],
-      ["/ai-assistant", "AI Assistant", "✦", "Captions, hashtags and analysis"],
+      { href: "/dashboard", label: "Dashboard", icon: "◫", description: "Overview and growth signals" },
+      { href: "/content-studio", label: "Content Studio", icon: "◇", description: "Media, drafts and publishing prep" },
+      { href: "/ai-assistant", label: "AI Assistant", icon: "✦", description: "Captions, hashtags and analysis" },
     ],
   },
   {
     label: "Intelligence",
     items: [
-      ["/calendar", "Calendar", "▦", "Schedule and publishing queue"],
-      ["/analytics", "Analytics", "⌁", "Performance and reach trends"],
-      ["/growth-insights", "Growth Insights", "↗", "Best times and recommendations"],
+      { href: "/calendar", label: "Calendar", icon: "▦", description: "Schedule and publishing queue" },
+      { href: "/analytics", label: "Analytics", icon: "⌁", description: "Performance and reach trends" },
+      { href: "/growth-insights", label: "Growth Insights", icon: "↗", description: "Best times and recommendations" },
     ],
   },
   {
     label: "Account",
     items: [
-      ["/social-accounts", "Social Accounts", "◎", "Facebook and Instagram connections"],
-      ["/settings", "Settings", "⚙", "Profile and workspace preferences"],
+      { href: "/social-accounts", label: "Social Accounts", icon: "◎", description: "Facebook and Instagram connections" },
+      { href: "/settings", label: "Settings", icon: "⚙", description: "Profile and workspace preferences" },
     ],
   },
-] as const;
+];
 
-const nav = navGroups.flatMap((group) => group.items);
+const nav: NavItem[] = navGroups.flatMap((group) => group.items);
 
 type UserProfile = { name: string; email: string; role?: string };
 
@@ -116,11 +128,11 @@ export default function AppShell({ children, title, subtitle, actions }: { child
     return profile.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "CR";
   }, [profile]);
 
-  const currentItem = useMemo(() => nav.find(([href]) => href === pathname), [pathname]);
+  const currentItem = useMemo(() => nav.find((item) => item.href === pathname), [pathname]);
   const commandResults = useMemo(() => {
     const query = commandQuery.trim().toLowerCase();
     if (!query) return nav;
-    return nav.filter(([, label, , description]) => `${label} ${description}`.toLowerCase().includes(query));
+    return nav.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(query));
   }, [commandQuery]);
 
   function closeCommand() {
@@ -167,18 +179,18 @@ export default function AppShell({ children, title, subtitle, actions }: { child
             <div key={group.label} className="mb-5">
               <div className="mb-2 px-3 text-[9px] font-bold uppercase tracking-[.17em] text-[#4f5c73]">{group.label}</div>
               <div className="space-y-1">
-                {group.items.map(([href, label, icon]) => {
-                  const active = pathname === href;
+                {group.items.map((item) => {
+                  const active = pathname === item.href;
                   return (
                     <Link
-                      key={href}
-                      href={href}
+                      key={item.href}
+                      href={item.href}
                       aria-current={active ? "page" : undefined}
                       className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[12px] font-semibold transition-all duration-200 ${active ? "border border-violet-300/15 bg-gradient-to-r from-violet-500/15 via-violet-500/[.07] to-transparent text-violet-50 shadow-[0_10px_30px_rgba(76,29,149,.08)]" : "border border-transparent text-[#76839a] hover:border-white/[.045] hover:bg-white/[.025] hover:text-[#d4dcef]"}`}
                     >
                       {active && <span className="absolute inset-y-2 left-0 w-[2px] rounded-full bg-gradient-to-b from-violet-300 to-cyan-400 shadow-[0_0_10px_rgba(168,85,247,.45)]" />}
-                      <span className={`grid h-8 w-8 place-items-center rounded-lg text-sm transition ${active ? "bg-violet-500/12 text-violet-200" : "bg-white/[.018] text-[#59667e] group-hover:text-[#9aa7bf]"}`}>{icon}</span>
-                      <span>{label}</span>
+                      <span className={`grid h-8 w-8 place-items-center rounded-lg text-sm transition ${active ? "bg-violet-500/12 text-violet-200" : "bg-white/[.018] text-[#59667e] group-hover:text-[#9aa7bf]"}`}>{item.icon}</span>
+                      <span>{item.label}</span>
                     </Link>
                   );
                 })}
@@ -230,12 +242,12 @@ export default function AppShell({ children, title, subtitle, actions }: { child
       </main>
 
       <nav aria-label="Mobile navigation" className="fixed inset-x-3 bottom-3 z-50 flex items-center justify-around rounded-2xl border border-white/[.08] bg-[#050a18]/94 p-2 shadow-[0_20px_60px_rgba(0,0,0,.5)] backdrop-blur-2xl lg:hidden">
-        {nav.slice(0, 4).map(([href, label, icon]) => {
-          const active = pathname === href;
-          return <Link key={href} href={href} aria-label={label} aria-current={active ? "page" : undefined} className={`grid min-h-12 min-w-12 place-items-center rounded-xl text-base transition ${active ? "border border-violet-300/10 bg-violet-500/15 text-violet-200" : "text-[#67748d]"}`}><span>{icon}</span></Link>;
+        {nav.slice(0, 4).map((item) => {
+          const active = pathname === item.href;
+          return <Link key={item.href} href={item.href} aria-label={item.label} aria-current={active ? "page" : undefined} className={`grid min-h-12 min-w-12 place-items-center rounded-xl text-base transition ${active ? "border border-violet-300/10 bg-violet-500/15 text-violet-200" : "text-[#67748d]"}`}><span>{item.icon}</span></Link>;
         })}
-        <button onClick={() => setMoreOpen((open) => !open)} aria-label="More navigation" aria-expanded={moreOpen} className={`grid min-h-12 min-w-12 place-items-center rounded-xl text-base ${moreOpen || nav.slice(4).some(([href]) => href === pathname) ? "border border-violet-300/10 bg-violet-500/15 text-violet-200" : "text-[#67748d]"}`}>•••</button>
-        {moreOpen && <div className="glass absolute inset-x-0 bottom-[4.5rem] grid grid-cols-2 gap-2 rounded-2xl p-3 shadow-2xl">{nav.slice(4).map(([href, label, icon]) => { const active = pathname === href; return <Link key={href} href={href} onClick={() => setMoreOpen(false)} aria-current={active ? "page" : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-xs font-semibold ${active ? "bg-violet-500/15 text-violet-100" : "text-[#9aa6bd] hover:bg-white/[.03]"}`}><span className="grid w-5 place-items-center text-sm">{icon}</span>{label}</Link>; })}</div>}
+        <button onClick={() => setMoreOpen((open) => !open)} aria-label="More navigation" aria-expanded={moreOpen} className={`grid min-h-12 min-w-12 place-items-center rounded-xl text-base ${moreOpen || nav.slice(4).some((item) => item.href === pathname) ? "border border-violet-300/10 bg-violet-500/15 text-violet-200" : "text-[#67748d]"}`}>•••</button>
+        {moreOpen && <div className="glass absolute inset-x-0 bottom-[4.5rem] grid grid-cols-2 gap-2 rounded-2xl p-3 shadow-2xl">{nav.slice(4).map((item) => { const active = pathname === item.href; return <Link key={item.href} href={item.href} onClick={() => setMoreOpen(false)} aria-current={active ? "page" : undefined} className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-xs font-semibold ${active ? "bg-violet-500/15 text-violet-100" : "text-[#9aa6bd] hover:bg-white/[.03]"}`}><span className="grid w-5 place-items-center text-sm">{item.icon}</span>{item.label}</Link>; })}</div>}
       </nav>
 
       {commandOpen && (
@@ -247,10 +259,10 @@ export default function AppShell({ children, title, subtitle, actions }: { child
               <span className="kbd">Esc</span>
             </div>
             <div className="max-h-[52vh] overflow-y-auto p-2">
-              {commandResults.length ? commandResults.map(([href, label, icon, description]) => (
-                <Link key={href} href={href} onClick={closeCommand} className={`group flex items-center gap-3 rounded-xl border px-3 py-3 transition ${pathname === href ? "border-violet-300/15 bg-violet-500/[.08]" : "border-transparent hover:border-white/[.05] hover:bg-white/[.025]"}`}>
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.025] text-sm text-violet-200">{icon}</span>
-                  <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-white">{label}</span><span className="mt-1 block truncate text-[10px] text-[#6f7b92]">{description}</span></span>
+              {commandResults.length ? commandResults.map((item) => (
+                <Link key={item.href} href={item.href} onClick={closeCommand} className={`group flex items-center gap-3 rounded-xl border px-3 py-3 transition ${pathname === item.href ? "border-violet-300/15 bg-violet-500/[.08]" : "border-transparent hover:border-white/[.05] hover:bg-white/[.025]"}`}>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/[.025] text-sm text-violet-200">{item.icon}</span>
+                  <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-white">{item.label}</span><span className="mt-1 block truncate text-[10px] text-[#6f7b92]">{item.description}</span></span>
                   <span className="text-xs text-[#556278] transition group-hover:translate-x-0.5 group-hover:text-violet-300">↗</span>
                 </Link>
               )) : <div className="px-5 py-10 text-center"><div className="text-sm font-semibold text-white">No matching workspace</div><div className="muted mt-1 text-xs">Try searching for analytics, calendar, AI or settings.</div></div>}
