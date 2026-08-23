@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { apiFetch, clearSession, getToken } from "@/lib/api";
+import { apiFetch, clearSession, getToken, SESSION_EXPIRED_EVENT } from "@/lib/api";
 
 const nav = [
   ["/dashboard", "Dashboard", "◫"],
@@ -43,12 +43,20 @@ export default function AppShell({ children, title, subtitle, actions }: { child
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
+
     const controller = new AbortController();
+    const handleExpiredSession = () => router.replace("/login?expired=1");
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession);
+
     apiFetch<UserProfile>("/api/v1/users/me", { signal: controller.signal })
       .then(setProfile)
       .catch(() => {})
       .finally(() => setSessionReady(true));
-    return () => controller.abort();
+
+    return () => {
+      controller.abort();
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpiredSession);
+    };
   }, [pathname, router]);
 
   const initials = useMemo(() => {
