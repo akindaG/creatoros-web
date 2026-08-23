@@ -2,6 +2,12 @@
 
 Premium Next.js frontend for CreatorOS AI, an AI-powered Social Growth Intelligence Platform.
 
+## Project repositories
+
+- Frontend: https://github.com/akindaG/creatoros-web
+- Backend: https://github.com/akindaG/creatoros-api
+- Documentation: https://github.com/akindaG/creatoros-docs
+
 ## MVP screens
 
 - Landing page
@@ -49,3 +55,5 @@ GitHub Actions runs both checks on feature branches and pull requests.
 The UI follows the submitted CreatorOS Figma system: dark navy surfaces, violet intelligence accents, mint success signals, glass panels, compact data-rich cards, responsive navigation and focused creator workflows.
 
 Version 1.0 intentionally limits social integrations to Facebook and Instagram.
+
+For architecture, local setup, testing, deployment and final demo documentation, see the `creatoros-docs` repository.
