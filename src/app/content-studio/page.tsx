@@ -38,7 +38,9 @@ export default function ContentStudioPage() {
   useEffect(()=>{
     const frame=requestAnimationFrame(()=>{
       const draft=sessionStorage.getItem("creatoros_draft_caption");
+      const draftPlatform=sessionStorage.getItem("creatoros_draft_platform");
       if(draft){setCaption(draft);sessionStorage.removeItem("creatoros_draft_caption");}
+      if(draftPlatform==="facebook"||draftPlatform==="instagram"){setPlatform(draftPlatform==="facebook"?"Facebook":"Instagram");sessionStorage.removeItem("creatoros_draft_platform");}
       void loadDrafts();
     });
     return()=>cancelAnimationFrame(frame);
