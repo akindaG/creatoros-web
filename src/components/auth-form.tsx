@@ -80,7 +80,7 @@ export default function AuthForm({ mode }: { mode: Mode }) {
           </div>
         </div>
 
-        <div className="relative flex items-center justify-between text-[10px] text-[#56637a]"><span>Facebook + Instagram · Qwen 3 · Analytics</span><span>CreatorOS AI</span></div>
+        <div className="relative flex items-center justify-between text-[10px] text-[#56637a]"><span>Facebook + Instagram · AI Assistant · Analytics</span><span>CreatorOS AI</span></div>
       </section>
 
       <section className="relative flex min-h-[calc(100vh-3rem)] items-center justify-center py-12 lg:min-h-screen lg:px-10 xl:px-16">
