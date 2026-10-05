@@ -172,7 +172,6 @@ export default function CalendarClient({
 
   useEffect(()=>{
     const controller=new AbortController();
-    setLoading(true);
     const query=new URLSearchParams({start:weekStart.toISOString(),end:weekEnd.toISOString()});
     const requests:Promise<unknown>[]=[
       apiFetch<CalendarItem[]>(`/api/v1/calendar?${query}`,{signal:controller.signal})
@@ -374,6 +373,7 @@ export default function CalendarClient({
   }
 
   function shiftWeek(amount:number){
+    setLoading(true);
     setAnchorDate(current=>{
       const next=new Date(current);
       next.setDate(next.getDate()+amount*7);
@@ -537,7 +537,7 @@ export default function CalendarClient({
               <button onClick={()=>shiftWeek(-1)} aria-label="Previous week" className="secondary-btn !min-h-8 !px-3">‹</button>
               <h2 className="min-w-48 text-center font-semibold text-white">{weekLabel(weekStart)}</h2>
               <button onClick={()=>shiftWeek(1)} aria-label="Next week" className="secondary-btn !min-h-8 !px-3">›</button>
-              <button onClick={()=>setAnchorDate(new Date())} className="secondary-btn !min-h-8">Today</button>
+              <button onClick={()=>{setLoading(true);setAnchorDate(new Date());}} className="secondary-btn !min-h-8">Today</button>
             </div>
             <div className="flex items-center gap-2">
               <span className="pill border-violet-300/20 text-violet-100">24-hour view</span>
