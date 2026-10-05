@@ -30,7 +30,7 @@ export default function TermsPage() {
       <LegalSection title="3. Social account authorization">
         <p>
           You may connect only Facebook Pages, Instagram accounts, or other supported accounts that you are authorized
-          to manage. You are responsible for complying with Meta's terms, policies, account requirements, and content
+          to manage. You are responsible for complying with Meta’s terms, policies, account requirements, and content
           rules while using CreatorOS.
         </p>
       </LegalSection>
