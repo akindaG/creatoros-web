@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/app-shell";
 import { Card, EmptyState } from "@/components/ui";
+import { SocialLogo } from "@/components/social-logo";
 import { apiFetch } from "@/lib/api";
 
 type CaptionResponse={caption:string;cta:string;hashtags:string[];source:string};
