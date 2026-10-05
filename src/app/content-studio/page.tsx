@@ -11,13 +11,16 @@ type UploadResponse = { url:string; object_name:string; storage:string };
 type PublishResponse = { status:string; mode:string; external_id?:string|null; message?:string };
 type Post = { id:string; title:string; caption:string|null; media_url:string|null; platform:string; status:string; scheduled_time:string|null; created_at:string };
 type Filter = "All media" | "Images" | "Videos";
+type PlatformLabel = "Instagram" | "Facebook Page" | "Facebook Profile";
 
+function platformValue(platform:PlatformLabel):"instagram"|"facebook"|"facebook_profile" { return platform==="Facebook Page"?"facebook":platform==="Facebook Profile"?"facebook_profile":"instagram"; }
+function platformLabel(platform:string):PlatformLabel { return platform==="facebook"?"Facebook Page":platform==="facebook_profile"?"Facebook Profile":"Instagram"; }
 function kindFromUrl(url:string):"IMAGE"|"VIDEO" { return /\.mp4(?:$|\?)/i.test(url)?"VIDEO":"IMAGE"; }
 
 export default function ContentStudioPage() {
   const [title,setTitle] = useState("Untitled creator post");
   const [caption,setCaption] = useState("");
-  const [platform,setPlatform] = useState("Instagram");
+  const [platform,setPlatform] = useState<PlatformLabel>("Instagram");
   const [uploadedAssets,setUploadedAssets] = useState<Asset[]>([]);
   const [drafts,setDrafts] = useState<Post[]>([]);
   const [selectedAssetId,setSelectedAssetId] = useState("");
@@ -29,6 +32,7 @@ export default function ContentStudioPage() {
   const [loadingDrafts,setLoadingDrafts] = useState(true);
   const [error,setError] = useState("");
   const [message,setMessage] = useState("");
+  const [manualSharePostId,setManualSharePostId] = useState("");
 
   const loadDrafts=useCallback(async()=>{
     try{const data=await apiFetch<Post[]>("/api/v1/posts?status=draft");setDrafts(data);}
@@ -41,7 +45,7 @@ export default function ContentStudioPage() {
       const draft=sessionStorage.getItem("creatoros_draft_caption");
       const draftPlatform=sessionStorage.getItem("creatoros_draft_platform");
       if(draft){setCaption(draft);sessionStorage.removeItem("creatoros_draft_caption");}
-      if(draftPlatform==="facebook"||draftPlatform==="instagram"){setPlatform(draftPlatform==="facebook"?"Facebook":"Instagram");sessionStorage.removeItem("creatoros_draft_platform");}
+      if(draftPlatform==="facebook"||draftPlatform==="instagram"||draftPlatform==="facebook_profile"){setPlatform(platformLabel(draftPlatform));sessionStorage.removeItem("creatoros_draft_platform");}
       void loadDrafts();
     });
     return()=>cancelAnimationFrame(frame);
@@ -65,10 +69,10 @@ export default function ContentStudioPage() {
     {label:"Videos",count:assets.filter(asset=>asset.kind==="VIDEO").length},
   ];
 
-  function resetEditor(){setEditingPostId("");setTitle("Untitled creator post");setCaption("");setPlatform("Instagram");setSelectedAssetId("");setMessage("");setError("");}
+  function resetEditor(){setEditingPostId("");setTitle("Untitled creator post");setCaption("");setPlatform("Instagram");setSelectedAssetId("");setManualSharePostId("");setMessage("");setError("");}
 
   function editDraft(post:Post){
-    setEditingPostId(post.id);setTitle(post.title);setCaption(post.caption??"");setPlatform(post.platform==="facebook"?"Facebook":"Instagram");
+    setEditingPostId(post.id);setTitle(post.title);setCaption(post.caption??"");setPlatform(platformLabel(post.platform));setManualSharePostId("");
     const matching=assets.find(asset=>asset.url===post.media_url);setSelectedAssetId(matching?.id??"");setMessage("");setError("");
   }
 
@@ -87,7 +91,7 @@ export default function ContentStudioPage() {
   async function saveDraft(){
     if(!title.trim()){setError("Add a post title before saving.");return;}
     setError("");setMessage("");setSaving(true);
-    const payload={title:title.trim(),caption:caption.trim()||null,media_url:selectedAsset?.url??null,platform:platform.toLowerCase(),status:"draft",scheduled_time:null};
+    const payload={title:title.trim(),caption:caption.trim()||null,media_url:selectedAsset?.url??null,platform:platformValue(platform),status:"draft",scheduled_time:null};
     try{
       const post=editingPostId
         ? await apiFetch<Post>(`/api/v1/posts/${editingPostId}`,{method:"PUT",body:JSON.stringify(payload)})
@@ -101,25 +105,61 @@ export default function ContentStudioPage() {
   async function publishNow(){
     if(!title.trim()){setError("Add a post title before publishing.");return;}
     const targetPlatform=platform;
-    if(!window.confirm(`Publish this post to ${targetPlatform} now?`))return;
+    const isProfileShare=targetPlatform==="Facebook Profile";
+    if(!window.confirm(isProfileShare?"Prepare this post for your personal Facebook profile now? CreatorOS will copy the caption and open Facebook for you to finish the post.":`Publish this post to ${targetPlatform} now?`))return;
+
+    const facebookWindow=isProfileShare?window.open("about:blank","creatoros-facebook-profile"):null;
+    if(isProfileShare&&facebookWindow)facebookWindow.opener=null;
 
     setPublishing(true);setError("");setMessage("");
-    const payload={title:title.trim(),caption:caption.trim()||null,media_url:selectedAsset?.url??null,platform:targetPlatform.toLowerCase(),status:"draft",scheduled_time:null};
+    const payload={title:title.trim(),caption:caption.trim()||null,media_url:selectedAsset?.url??null,platform:platformValue(targetPlatform),status:"draft",scheduled_time:null};
 
     try{
+      let copied=false;
+      if(isProfileShare){
+        const shareText=caption.trim()||title.trim();
+        try{await navigator.clipboard.writeText(shareText);copied=true;}catch{}
+      }
+
       const post=editingPostId
         ? await apiFetch<Post>(`/api/v1/posts/${editingPostId}`,{method:"PUT",body:JSON.stringify(payload)})
         : await apiFetch<Post>("/api/v1/posts",{method:"POST",body:JSON.stringify(payload)});
 
       setEditingPostId(post.id);
+
+      if(isProfileShare){
+        setManualSharePostId(post.id);
+        if(facebookWindow)facebookWindow.location.href="https://www.facebook.com/";
+        else window.open("https://www.facebook.com/","_blank","noopener,noreferrer");
+        await loadDrafts();
+        setMessage(`Facebook opened for manual profile sharing. ${copied?"Your caption is copied to the clipboard.":"Copy your caption from CreatorOS."}${selectedAsset?" Add the selected media manually in Facebook.":""} After you post it, return here and click “I've shared it”.`);
+        return;
+      }
+
       const publishResult=await apiFetch<PublishResponse>(`/api/v1/publishing/posts/${post.id}`,{method:"POST"});
       await loadDrafts();
       resetEditor();
-      if(publishResult.mode==="live")setMessage(`Post published to ${targetPlatform==="Facebook"?"Facebook Page":targetPlatform} successfully${publishResult.external_id?` · ${publishResult.external_id}`:""}.`);
+      if(publishResult.mode==="live")setMessage(`Post published to ${targetPlatform} successfully${publishResult.external_id?` · ${publishResult.external_id}`:""}.`);
       else setError(`CreatorOS simulated this publish. Nothing was sent to ${targetPlatform}. Set SOCIAL_PUBLISH_MODE=live on the deployed backend and redeploy it.`);
     }catch(requestError){
+      if(facebookWindow&&!facebookWindow.closed)facebookWindow.close();
       await loadDrafts();
       setError(requestError instanceof Error?requestError.message:`Could not publish to ${targetPlatform}`);
+    }finally{
+      setPublishing(false);
+    }
+  }
+
+  async function markManualShared(){
+    if(!manualSharePostId)return;
+    setPublishing(true);setError("");
+    try{
+      await apiFetch(`/api/v1/publishing/posts/${manualSharePostId}/mark-shared`,{method:"POST"});
+      await loadDrafts();
+      resetEditor();
+      setMessage("Facebook profile post marked as shared.");
+    }catch(requestError){
+      setError(requestError instanceof Error?requestError.message:"Could not mark the profile post as shared");
     }finally{
       setPublishing(false);
     }
@@ -144,7 +184,7 @@ export default function ContentStudioPage() {
 
         <Card className="p-5"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-white">Media assets</h2><p className="muted mt-1 text-xs">Uploaded media and media attached to saved drafts</p></div><div className="pill">{filteredAssets.length} assets</div></div>{filteredAssets.length?<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{filteredAssets.map((item,index)=><button key={item.id} onClick={()=>setSelectedAssetId(item.id)} aria-pressed={selectedAssetId===item.id} className={`group relative aspect-square overflow-hidden rounded-xl border text-left ${selectedAssetId===item.id?"border-violet-300/50 shadow-[0_0_22px_rgba(124,58,237,.12)]":"border-white/[.055]"}`}><div className={`absolute inset-0 bg-gradient-to-br ${index%3===0?"from-violet-500/35 via-[#101a31] to-emerald-400/10":index%3===1?"from-fuchsia-400/20 via-[#0e1427] to-cyan-400/10":"from-indigo-400/20 via-[#10162a] to-rose-400/10"}`} style={item.kind==="IMAGE"?{backgroundImage:`linear-gradient(to top, rgba(2,6,23,.88), rgba(2,6,23,.08)), url(${mediaUrl(item.url)})`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}/><div className="premium-grid absolute inset-0 opacity-30"/><div className="absolute inset-x-0 bottom-0 p-3"><div className="truncate text-xs font-semibold text-white">{item.name}</div><div className="mt-1 text-[9px] text-[#a2acc0]">{item.kind} · {item.size}</div></div></button>)}</div>:<EmptyState title="Your media library is empty" description="Upload an image or MP4. CreatorOS will store it through the backend and attach its URL to your draft."/>}</Card>
 
-        <Card className="h-fit p-5"><div className="flex items-center justify-between border-b border-white/[.055] pb-4"><h2 className="font-semibold text-white">Post editor</h2><span className="pill">{editingPostId?"Editing draft":"New draft"}</span></div><label className="mt-5 block"><span className="label mb-2 block">Post title</span><input className="field" value={title} onChange={event=>setTitle(event.target.value)} maxLength={200}/></label><div className="mt-5"><div className="label mb-2">Platform</div><div className="flex gap-2">{["Instagram","Facebook"].map(item=><button key={item} onClick={()=>setPlatform(item)} aria-pressed={platform===item} className={`pill ${platform===item?"border-violet-300/35 bg-violet-500/10 text-violet-100":""}`}><span className="status-dot"/>{item}</button>)}</div></div><div className="mt-5"><label className="label mb-2 block">Caption</label><textarea className="field min-h-44 resize-none text-sm leading-6" value={caption} onChange={event=>setCaption(event.target.value)} maxLength={2200}/><div className="mt-2 flex justify-between text-[10px] text-[#66738b]"><span>{count} / 2200 characters</span><Link href="/ai-assistant" className="text-violet-300">✦ Improve with AI</Link></div></div><div className="mt-5 rounded-xl border border-white/[.055] bg-white/[.02] p-3"><div className="flex items-center justify-between"><div className="label">Attached media</div>{selectedAsset&&<button onClick={()=>setSelectedAssetId("")} className="text-[10px] text-[#7d899f]">Remove</button>}</div><div className="premium-grid mt-2 flex h-24 items-end rounded-lg bg-gradient-to-br from-violet-500/20 to-emerald-300/[.05] p-3" style={selectedAsset?.kind==="IMAGE"?{backgroundImage:`linear-gradient(to top, rgba(2,6,23,.9), rgba(2,6,23,.08)), url(${mediaUrl(selectedAsset.url)})`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}><span className="rounded-md bg-[#020617]/70 px-2 py-1 text-[10px] text-violet-100">{selectedAsset?.name??"No media selected"}</span></div></div><div className="mt-5 grid gap-2"><button onClick={saveDraft} disabled={saving||publishing} className="primary-btn">{saving?"Saving...":editingPostId?"Save changes":"Save draft"}</button><button onClick={publishNow} disabled={saving||publishing||uploading} className="secondary-btn">{publishing?"Publishing...":platform==="Facebook"?"Post to Facebook Page now":`Post to ${platform} now`}</button>{editingPostId?<Link href={`/calendar?post=${encodeURIComponent(editingPostId)}`} className="secondary-btn">Schedule post</Link>:<button className="secondary-btn" disabled title="Save the draft before scheduling">Save before scheduling</button>}</div></Card>
+        <Card className="h-fit p-5"><div className="flex items-center justify-between border-b border-white/[.055] pb-4"><h2 className="font-semibold text-white">Post editor</h2><span className="pill">{editingPostId?"Editing draft":"New draft"}</span></div><label className="mt-5 block"><span className="label mb-2 block">Post title</span><input className="field" value={title} onChange={event=>setTitle(event.target.value)} maxLength={200}/></label><div className="mt-5"><div className="label mb-2">Platform</div><div className="flex gap-2">{(["Instagram","Facebook Page","Facebook Profile"] as PlatformLabel[]).map(item=><button key={item} onClick={()=>setPlatform(item)} aria-pressed={platform===item} className={`pill ${platform===item?"border-violet-300/35 bg-violet-500/10 text-violet-100":""}`}><span className="status-dot"/>{item}</button>)}</div></div>{platform==="Facebook Profile"&&<div className="mt-4 rounded-xl border border-blue-300/10 bg-blue-300/[.04] p-3 text-[10px] leading-5 text-blue-100"><strong>Personal profile mode:</strong> Meta does not allow CreatorOS to silently publish to personal timelines. CreatorOS saves the post, copies the caption, opens Facebook, and lets you complete the share yourself. Scheduled profile posts become “Ready to share” in Calendar at the selected time.</div>}<div className="mt-5"><label className="label mb-2 block">Caption</label><textarea className="field min-h-44 resize-none text-sm leading-6" value={caption} onChange={event=>setCaption(event.target.value)} maxLength={2200}/><div className="mt-2 flex justify-between text-[10px] text-[#66738b]"><span>{count} / 2200 characters</span><Link href="/ai-assistant" className="text-violet-300">✦ Improve with AI</Link></div></div><div className="mt-5 rounded-xl border border-white/[.055] bg-white/[.02] p-3"><div className="flex items-center justify-between"><div className="label">Attached media</div>{selectedAsset&&<button onClick={()=>setSelectedAssetId("")} className="text-[10px] text-[#7d899f]">Remove</button>}</div><div className="premium-grid mt-2 flex h-24 items-end rounded-lg bg-gradient-to-br from-violet-500/20 to-emerald-300/[.05] p-3" style={selectedAsset?.kind==="IMAGE"?{backgroundImage:`linear-gradient(to top, rgba(2,6,23,.9), rgba(2,6,23,.08)), url(${mediaUrl(selectedAsset.url)})`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}><span className="rounded-md bg-[#020617]/70 px-2 py-1 text-[10px] text-violet-100">{selectedAsset?.name??"No media selected"}</span></div></div><div className="mt-5 grid gap-2"><button onClick={saveDraft} disabled={saving||publishing} className="primary-btn">{saving?"Saving...":editingPostId?"Save changes":"Save draft"}</button><button onClick={publishNow} disabled={saving||publishing||uploading} className="secondary-btn">{publishing?"Working...":platform==="Facebook Profile"?"Share to Facebook Profile":platform==="Facebook Page"?"Post to Facebook Page now":`Post to ${platform} now`}</button>{manualSharePostId&&<button onClick={markManualShared} disabled={publishing} className="secondary-btn">✓ I&apos;ve shared it on Facebook</button>}{editingPostId?<Link href={`/calendar?post=${encodeURIComponent(editingPostId)}`} className="secondary-btn">Schedule post</Link>:<button className="secondary-btn" disabled title="Save the draft before scheduling">Save before scheduling</button>}</div></Card>
       </div>
     </AppShell>
   );
