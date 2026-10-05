@@ -8,7 +8,7 @@ export default function PrivacyPage() {
       updated="October 5, 2026"
     >
       <p>
-        CreatorOS AI ("CreatorOS", "we", "us") is a social media management and growth-intelligence platform.
+        CreatorOS AI (CreatorOS, we, us) is a social media management and growth-intelligence platform.
         This policy explains what information CreatorOS processes when you register, connect supported social
         accounts, create content, schedule posts, use AI features, or view analytics.
       </p>
@@ -40,7 +40,7 @@ export default function PrivacyPage() {
       <LegalSection title="3. How we use information">
         <p>
           We use information to authenticate users, connect social accounts, save drafts, upload media, publish or
-          schedule content at the user's request, display analytics, recommend posting times, provide growth
+          schedule content at the user’s request, display analytics, recommend posting times, provide growth
           recommendations, and operate or secure the service.
         </p>
         <p>
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
       <LegalSection title="6. Service providers and third-party platforms">
         <p>
           CreatorOS relies on service providers for application hosting, backend hosting, database and storage
-          services, and AI processing. Facebook and Instagram are provided by Meta and remain subject to Meta's own
+          services, and AI processing. Facebook and Instagram are provided by Meta and remain subject to Meta’s own
           terms, privacy policies, account requirements, and API restrictions.
         </p>
       </LegalSection>
