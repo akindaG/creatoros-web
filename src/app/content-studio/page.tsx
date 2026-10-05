@@ -129,10 +129,12 @@ export default function ContentStudioPage() {
 
       if(isProfileShare){
         setManualSharePostId(post.id);
+        let opened=facebookWindow;
         if(facebookWindow)facebookWindow.location.href="https://www.facebook.com/";
-        else window.open("https://www.facebook.com/","_blank","noopener,noreferrer");
+        else opened=window.open("https://www.facebook.com/","_blank","noopener,noreferrer");
         await loadDrafts();
-        setMessage(`Facebook opened for manual profile sharing. ${copied?"Your caption is copied to the clipboard.":"Copy your caption from CreatorOS."}${selectedAsset?" Add the selected media manually in Facebook.":""} After you post it, return here and click “I've shared it”.`);
+        if(!opened)setError(`Your browser blocked the Facebook window. ${copied?"The caption is copied, so open Facebook manually and paste it.":"Open Facebook manually and copy the caption from CreatorOS."}`);
+        else setMessage(`Facebook opened for manual profile sharing. ${copied?"Your caption is copied to the clipboard.":"Copy your caption from CreatorOS."}${selectedAsset?" Add the selected media manually in Facebook.":""} After you post it, return here and click “I've shared it”.`);
         return;
       }
 
