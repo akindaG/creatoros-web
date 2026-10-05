@@ -94,8 +94,7 @@ export default function PrivacyPage() {
 
       <LegalSection title="9. Changes to this policy">
         <p>
-          We may update this policy when CreatorOS features, integrations, or data practices change. The "Last
-          updated" date above identifies the current version.
+          We may update this policy when CreatorOS features, integrations, or data practices change. The Last updated date above identifies the current version.
         </p>
       </LegalSection>
 
