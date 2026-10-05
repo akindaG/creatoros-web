@@ -51,7 +51,7 @@ export default function ContentStudioPage() {
       const draft=sessionStorage.getItem("creatoros_draft_caption");
       const draftPlatform=sessionStorage.getItem("creatoros_draft_platform");
       if(draft){setCaption(draft);sessionStorage.removeItem("creatoros_draft_caption");}
-      if(draftPlatform==="facebook"||draftPlatform==="instagram"||draftPlatform==="facebook_profile"){setPlatform(platformLabel(draftPlatform));sessionStorage.removeItem("creatoros_draft_platform");}
+      if(draftPlatform==="facebook"||draftPlatform==="instagram"||draftPlatform==="facebook_profile"){setPlatform(platformLabel(draftPlatform));setPublishTargets(draftPlatform==="facebook"?["facebook"]:draftPlatform==="instagram"?["instagram"]:[]);sessionStorage.removeItem("creatoros_draft_platform");}
       void loadDrafts();
       void apiFetch<PublishingReadiness>("/api/v1/publishing/readiness").then(setPublishingReadiness).catch(()=>undefined);
     });
