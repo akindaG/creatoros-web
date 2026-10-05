@@ -9,7 +9,7 @@ import { apiFetch, mediaUrl } from "@/lib/api";
 
 type Asset = { id:string; name:string; kind:"IMAGE"|"VIDEO"; size:string; url:string };
 type UploadResponse = { url:string; object_name:string; storage:string };
-type PublishResponse = { status:string; mode:string; external_id?:string|null; message?:string };
+type PublishResponse = { status:string; mode:string; external_id?:string|null; message?:string; published?:number; failed?:number; results?:Array<{platform:string;status:string;external_id?:string|null;detail?:string}> };\ntype PublishingReadiness = { live:boolean; mode:string; instagram_connected:boolean; facebook_connected:boolean };\ntype AutoPlatform = "instagram" | "facebook";
 type Post = { id:string; title:string; caption:string|null; media_url:string|null; platform:string; status:string; scheduled_time:string|null; created_at:string };
 type Filter = "All media" | "Images" | "Videos";
 type PlatformLabel = "Instagram" | "Facebook Page" | "Facebook Profile";
@@ -21,7 +21,7 @@ function kindFromUrl(url:string):"IMAGE"|"VIDEO" { return /\.mp4(?:$|\?)/i.test(
 export default function ContentStudioPage() {
   const [title,setTitle] = useState("Untitled creator post");
   const [caption,setCaption] = useState("");
-  const [platform,setPlatform] = useState<PlatformLabel>("Instagram");
+  const [platform,setPlatform] = useState<PlatformLabel>("Instagram");\n  const [publishTargets,setPublishTargets] = useState<AutoPlatform[]>(["instagram"]);\n  const [publishingReadiness,setPublishingReadiness] = useState<PublishingReadiness|null>(null);
   const [uploadedAssets,setUploadedAssets] = useState<Asset[]>([]);
   const [drafts,setDrafts] = useState<Post[]>([]);
   const [selectedAssetId,setSelectedAssetId] = useState("");
@@ -47,7 +47,7 @@ export default function ContentStudioPage() {
       const draftPlatform=sessionStorage.getItem("creatoros_draft_platform");
       if(draft){setCaption(draft);sessionStorage.removeItem("creatoros_draft_caption");}
       if(draftPlatform==="facebook"||draftPlatform==="instagram"||draftPlatform==="facebook_profile"){setPlatform(platformLabel(draftPlatform));sessionStorage.removeItem("creatoros_draft_platform");}
-      void loadDrafts();
+      void loadDrafts();\n      void apiFetch<PublishingReadiness>("/api/v1/publishing/readiness").then(setPublishingReadiness).catch(()=>undefined);
     });
     return()=>cancelAnimationFrame(frame);
   },[loadDrafts]);
@@ -70,10 +70,10 @@ export default function ContentStudioPage() {
     {label:"Videos",count:assets.filter(asset=>asset.kind==="VIDEO").length},
   ];
 
-  function resetEditor(){setEditingPostId("");setTitle("Untitled creator post");setCaption("");setPlatform("Instagram");setSelectedAssetId("");setManualSharePostId("");setMessage("");setError("");}
+  function resetEditor(){setEditingPostId("");setTitle("Untitled creator post");setCaption("");setPlatform("Instagram");setPublishTargets(["instagram"]);setSelectedAssetId("");setManualSharePostId("");setMessage("");setError("");}
 
   function editDraft(post:Post){
-    setEditingPostId(post.id);setTitle(post.title);setCaption(post.caption??"");setPlatform(platformLabel(post.platform));setManualSharePostId("");
+    setEditingPostId(post.id);setTitle(post.title);setCaption(post.caption??"");setPlatform(platformLabel(post.platform));setPublishTargets(post.platform==="facebook"?["facebook"]:post.platform==="instagram"?["instagram"]:[]);setManualSharePostId("");
     const matching=assets.find(asset=>asset.url===post.media_url);setSelectedAssetId(matching?.id??"");setMessage("");setError("");
   }
 
