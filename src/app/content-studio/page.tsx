@@ -70,7 +70,7 @@ export default function ContentStudioPage() {
   const count = caption.length;
   const selectedAsset=assets.find((asset)=>asset.id===selectedAssetId);
   const filteredAssets=useMemo(()=>assets.filter((asset)=>filter==="All media"||(filter==="Images"&&asset.kind==="IMAGE")||(filter==="Videos"&&asset.kind==="VIDEO")),[assets,filter]);
-  const activeAutoTargets=publishTargets.length?publishTargets:[platform==="Facebook Page"?"facebook":"instagram"];
+  const activeAutoTargets:AutoPlatform[]=publishTargets.length?publishTargets:[platform==="Facebook Page"?"facebook":"instagram"];
   const publishTargetText=activeAutoTargets.map(autoPlatformLabel).join(" + ");
   const filterOptions:{label:Filter;count:number}[]=[
     {label:"All media",count:assets.length},
