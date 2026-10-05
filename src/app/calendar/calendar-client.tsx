@@ -83,9 +83,11 @@ export default function CalendarClient({initialDate,postId}:{initialDate:string;
       const shareText=(post.caption||post.title).trim();
       let copied=false;
       try{await navigator.clipboard.writeText(shareText);copied=true;}catch{}
+      let opened=facebookWindow;
       if(facebookWindow)facebookWindow.location.href="https://www.facebook.com/";
-      else window.open("https://www.facebook.com/","_blank","noopener,noreferrer");
-      setScheduleMessage(`Facebook opened for your personal profile. ${copied?"The caption is copied; paste it into Facebook.":"Copy the caption from CreatorOS and paste it into Facebook."}${post.media_url?" Add the saved media manually before posting.":""}`);
+      else opened=window.open("https://www.facebook.com/","_blank","noopener,noreferrer");
+      if(!opened)setPageError(`Your browser blocked the Facebook window. ${copied?"The caption is copied, so open Facebook manually and paste it.":"Open Facebook manually and copy the caption from CreatorOS."}`);
+      else setScheduleMessage(`Facebook opened for your personal profile. ${copied?"The caption is copied; paste it into Facebook.":"Copy the caption from CreatorOS and paste it into Facebook."}${post.media_url?" Add the saved media manually before posting.":""}`);
     }catch(requestError){
       if(facebookWindow&&!facebookWindow.closed)facebookWindow.close();
       setPageError(requestError instanceof Error?requestError.message:"Could not prepare the Facebook profile share");
