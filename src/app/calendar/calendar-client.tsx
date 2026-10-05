@@ -10,15 +10,18 @@ import { apiFetch } from "@/lib/api";
 
 type CalendarItem = { schedule_id:string; post_id:string; title:string; platform:string; status:string; schedule_time:string };
 type Post = { id:string; title:string; caption?:string|null; media_url?:string|null; platform:string; status:string; scheduled_time?:string|null };
-type PublishingReadiness = { mode:string; live:boolean; scheduler:{running:boolean;mode:string}; facebook_connected:boolean; facebook_page_name:string|null };
+type PublishingReadiness = { mode:string; live:boolean; scheduler:{running:boolean;mode:string}; facebook_connected:boolean; facebook_page_name:string|null; instagram_connected:boolean; instagram_username?:string|null };
+type AutoPlatform = "instagram" | "facebook";
 const slots=Array.from({length:24},(_,hour)=>hour);
 
 function startOfWeek(date:Date){const start=new Date(date);const weekday=start.getDay()||7;start.setDate(start.getDate()-weekday+1);start.setHours(0,0,0,0);return start;}
 function sameDay(left:Date,right:Date){return left.getFullYear()===right.getFullYear()&&left.getMonth()===right.getMonth()&&left.getDate()===right.getDate();}
 function formatHour(hour:number){return `${hour%12||12} ${hour>=12?"PM":"AM"}`;}
 function platformName(value:string){return value==="facebook"?"Facebook Page":value==="facebook_profile"?"Facebook Profile":"Instagram";}
+function parseTargets(value:string):AutoPlatform[]{return value.split(",").map(item=>item.trim()).filter((item):item is AutoPlatform=>item==="instagram"||item==="facebook").filter((item,index,array)=>array.indexOf(item)===index);}
+function autoTargetLabel(value:AutoPlatform){return value==="facebook"?"Facebook Page":"Instagram";}
 
-export default function CalendarClient({initialDate,postId}:{initialDate:string;postId:string}){
+export default function CalendarClient({initialDate,postId,initialTargets}:{initialDate:string;postId:string;initialTargets:string}){
   const router=useRouter();
   const [anchorDate,setAnchorDate]=useState(()=>new Date(initialDate));
   const [items,setItems]=useState<CalendarItem[]>([]);
@@ -27,6 +30,7 @@ export default function CalendarClient({initialDate,postId}:{initialDate:string;
   const [loading,setLoading]=useState(true);
   const [refreshKey,setRefreshKey]=useState(0);
   const [platform,setPlatform]=useState("instagram");
+  const [scheduleTargets,setScheduleTargets]=useState<AutoPlatform[]>(()=>parseTargets(initialTargets));
   const [scheduling,setScheduling]=useState(false);
   const [scheduleError,setScheduleError]=useState("");
   const [scheduleMessage,setScheduleMessage]=useState("");
@@ -46,7 +50,13 @@ export default function CalendarClient({initialDate,postId}:{initialDate:string;
       apiFetch<PublishingReadiness>("/api/v1/publishing/readiness",{signal:controller.signal}).then(setPublishingReadiness).catch(()=>undefined),
     ];
     if(postId){
-      requests.push(apiFetch<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`,{signal:controller.signal}).then(post=>{setSelectedPost(post);setPlatform(post.platform);}));
+      requests.push(apiFetch<Post>(`/api/v1/posts/${encodeURIComponent(postId)}`,{signal:controller.signal}).then(post=>{
+        setSelectedPost(post);
+        setPlatform(post.platform);
+        const fromUrl=parseTargets(initialTargets);
+        if(post.platform==="facebook_profile")setScheduleTargets([]);
+        else setScheduleTargets(fromUrl.length?fromUrl:[post.platform==="facebook"?"facebook":"instagram"]);
+      }));
     }else{
       requests.push(Promise.resolve().then(()=>setSelectedPost(null)));
     }
@@ -54,7 +64,7 @@ export default function CalendarClient({initialDate,postId}:{initialDate:string;
       .catch(requestError=>{if(!(requestError instanceof DOMException&&requestError.name==="AbortError"))setPageError(requestError instanceof Error?requestError.message:"Could not load calendar");})
       .finally(()=>setLoading(false));
     return()=>controller.abort();
-  },[weekStart,weekEnd,refreshKey,postId]);
+  },[weekStart,weekEnd,refreshKey,postId,initialTargets]);
 
   useEffect(()=>{const timer=window.setInterval(()=>setRefreshKey(value=>value+1),30_000);return()=>window.clearInterval(timer);},[]);
 
@@ -62,10 +72,44 @@ export default function CalendarClient({initialDate,postId}:{initialDate:string;
     event.preventDefault();if(!postId)return;
     const form=new FormData(event.currentTarget);const scheduleTime=new Date(String(form.get("schedule_time")??""));
     if(Number.isNaN(scheduleTime.getTime())||scheduleTime<=new Date()){setScheduleError("Choose a valid future date and time.");return;}
+    const targets=scheduleTargets.length?scheduleTargets:[platform==="facebook"?"facebook":"instagram"] as AutoPlatform[];
     setScheduling(true);setScheduleError("");setScheduleMessage("");
-    try{await apiFetch(`/api/v1/posts/${encodeURIComponent(postId)}/schedule`,{method:"POST",body:JSON.stringify({schedule_time:scheduleTime.toISOString(),platform})});setScheduleMessage(platform==="facebook_profile"?"Facebook profile share reminder scheduled successfully. CreatorOS will mark it Ready to share at that time.":"Post scheduled successfully.");setRefreshKey(value=>value+1);setTimeout(()=>router.replace("/calendar"),650);}
+    try{
+      if(platform==="facebook_profile"){
+        await apiFetch(`/api/v1/posts/${encodeURIComponent(postId)}/schedule`,{method:"POST",body:JSON.stringify({schedule_time:scheduleTime.toISOString(),platform:"facebook_profile"})});
+        setScheduleMessage("Facebook profile share reminder scheduled successfully. CreatorOS will mark it Ready to share at that time.");
+      }else if(selectedPost?.status==="scheduled"||targets.length===1){
+        await apiFetch(`/api/v1/posts/${encodeURIComponent(postId)}/schedule`,{method:"POST",body:JSON.stringify({schedule_time:scheduleTime.toISOString(),platform:targets[0]})});
+        setScheduleMessage(`Post scheduled to ${autoTargetLabel(targets[0])} successfully.`);
+      }else{
+        await apiFetch(`/api/v1/posts/${encodeURIComponent(postId)}/schedule-multi`,{method:"POST",body:JSON.stringify({schedule_time:scheduleTime.toISOString(),platforms:targets})});
+        setScheduleMessage(`Post scheduled once for ${targets.map(autoTargetLabel).join(" + ")} at the same timestamp.`);
+      }
+      setRefreshKey(value=>value+1);setTimeout(()=>router.replace("/calendar"),800);
+    }
     catch(requestError){setScheduleError(requestError instanceof Error?requestError.message:"Could not schedule post");}
     finally{setScheduling(false);}
+  }
+
+  function chooseScheduleMode(value:string){
+    setPlatform(value);
+    if(value==="facebook_profile"){setScheduleTargets([]);return;}
+    const target:AutoPlatform=value==="facebook"?"facebook":"instagram";
+    setScheduleTargets(current=>current.includes(target)?current:[...current,target]);
+  }
+
+  function toggleScheduleTarget(target:AutoPlatform){
+    const connected=target==="instagram"?publishingReadiness?.instagram_connected:publishingReadiness?.facebook_connected;
+    if(connected===false){setScheduleError(`Connect ${autoTargetLabel(target)} first from Social Accounts.`);return;}
+    setScheduleError("");
+    setPlatform(target);
+    setScheduleTargets(current=>{
+      if(current.includes(target)){
+        if(current.length===1)return current;
+        return current.filter(item=>item!==target);
+      }
+      return [...current,target];
+    });
   }
 
   async function cancelSchedule(item:CalendarItem){
@@ -111,7 +155,7 @@ export default function CalendarClient({initialDate,postId}:{initialDate:string;
 
   return (
     <AppShell title="Content Calendar" subtitle="Plan and manage your publishing schedule" actions={<Link href="/content-studio" className="primary-btn !min-h-9 !px-4 !py-2 text-xs">＋ Create post</Link>}>
-      {postId&&<Card className="mb-4 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="kicker">{selectedPost?.status==="scheduled"?"Reschedule post":"Schedule draft"}</div><h1 className="mt-2 font-semibold text-white">{selectedPost?.title??"Loading post..."}</h1><p className="muted mt-1 text-xs">Choose a future time. Facebook Pages and Instagram publish automatically; Facebook Profile creates a manual-share reminder because Meta does not allow silent personal-timeline publishing.</p></div><Link href="/calendar" className="text-xs font-semibold text-violet-300">Cancel</Link></div><form onSubmit={schedulePost} className="mt-4 grid gap-3 sm:grid-cols-[1fr_160px_auto]"><label><span className="label mb-2 block">Publish date and time</span><input name="schedule_time" type="datetime-local" className="field" defaultValue={selectedPost?.scheduled_time?new Date(new Date(selectedPost.scheduled_time).getTime()-new Date(selectedPost.scheduled_time).getTimezoneOffset()*60000).toISOString().slice(0,16):undefined} required/></label><label><span className="label mb-2 block">Platform</span><select className="field" value={platform} onChange={event=>setPlatform(event.target.value)}><option value="instagram">Instagram</option><option value="facebook">Facebook Page</option><option value="facebook_profile">Facebook Profile · manual share</option></select></label><button className="primary-btn self-end" disabled={scheduling||!selectedPost}>{scheduling?"Scheduling...":selectedPost?.status==="scheduled"?"Update schedule":"Schedule"}</button></form>{platform==="facebook_profile"&&<div className="mt-3 rounded-xl border border-blue-300/10 bg-blue-300/[.04] p-3 text-[10px] leading-5 text-blue-100">At the scheduled time CreatorOS will change this item to <strong>Ready to share</strong>. Open Calendar, click <strong>Share</strong>, paste the copied caption in Facebook, then mark it shared.</div>}{scheduleError&&<div role="alert" className="mt-3 rounded-xl border border-rose-300/10 bg-rose-400/[.06] p-3 text-xs text-rose-200">{scheduleError}</div>}{scheduleMessage&&<div role="status" className="mt-3 rounded-xl border border-emerald-300/10 bg-emerald-300/[.06] p-3 text-xs text-emerald-100">{scheduleMessage}</div>}</Card>}
+      {postId&&<Card className="mb-4 p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="kicker">{selectedPost?.status==="scheduled"?"Reschedule post":"Schedule draft"}</div><h1 className="mt-2 font-semibold text-white">{selectedPost?.title??"Loading post..."}</h1><p className="muted mt-1 text-xs">Choose a future time. Facebook Pages and Instagram publish automatically; Facebook Profile creates a manual-share reminder because Meta does not allow silent personal-timeline publishing.</p></div><Link href="/calendar" className="text-xs font-semibold text-violet-300">Cancel</Link></div><form onSubmit={schedulePost} className="mt-4 grid gap-3 lg:grid-cols-[1fr_1.25fr_auto]"><label><span className="label mb-2 block">Publish date and time</span><input name="schedule_time" type="datetime-local" className="field" defaultValue={selectedPost?.scheduled_time?new Date(new Date(selectedPost.scheduled_time).getTime()-new Date(selectedPost.scheduled_time).getTimezoneOffset()*60000).toISOString().slice(0,16):undefined} required/></label><div><span className="label mb-2 block">Publish channels</span>{platform==="facebook_profile"?<div className="rounded-xl border border-blue-300/15 bg-blue-300/[.04] p-3"><button type="button" onClick={()=>chooseScheduleMode("instagram")} className="text-[10px] font-semibold text-violet-200">← Back to automatic channels</button><div className="mt-2 flex items-center gap-2 text-xs font-semibold text-blue-100"><SocialLogo platform="facebook_profile" className="h-5 w-5 rounded-md"/>Facebook Profile · manual share</div></div>:<div className="grid grid-cols-2 gap-2">{(["instagram","facebook"] as AutoPlatform[]).map(target=>{const connected=target==="instagram"?publishingReadiness?.instagram_connected:publishingReadiness?.facebook_connected;const selected=scheduleTargets.includes(target);return <button key={target} type="button" disabled={connected===false||selectedPost?.status==="scheduled"&&platform!==target} onClick={()=>toggleScheduleTarget(target)} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[10px] font-semibold ${selected?"border-violet-300/30 bg-violet-500/10 text-violet-100":"border-white/[.06] text-[#8290a8]"} ${connected===false?"cursor-not-allowed opacity-45":""}`}><SocialLogo platform={target} className="h-5 w-5 rounded-md"/><span>{autoTargetLabel(target)}<span className="mt-0.5 block text-[8px] font-normal text-[#66738b]">{connected===false?"Not connected":selected?"Selected":"Select"}</span></span></button>})}</div>}<button type="button" onClick={()=>chooseScheduleMode("facebook_profile")} className="mt-2 text-[9px] font-semibold text-blue-200">Use Facebook Profile manual share instead</button></div><button className="primary-btn self-end" disabled={scheduling||!selectedPost}>{scheduling?"Scheduling...":selectedPost?.status==="scheduled"?"Update schedule":platform==="facebook_profile"?"Schedule reminder":scheduleTargets.length>1?`Schedule ${scheduleTargets.length} platforms`:"Schedule"}</button></form>{platform==="facebook_profile"&&<div className="mt-3 rounded-xl border border-blue-300/10 bg-blue-300/[.04] p-3 text-[10px] leading-5 text-blue-100">At the scheduled time CreatorOS will change this item to <strong>Ready to share</strong>. Open Calendar, click <strong>Share</strong>, paste the copied caption in Facebook, then mark it shared.</div>}{scheduleError&&<div role="alert" className="mt-3 rounded-xl border border-rose-300/10 bg-rose-400/[.06] p-3 text-xs text-rose-200">{scheduleError}</div>}{scheduleMessage&&<div role="status" className="mt-3 rounded-xl border border-emerald-300/10 bg-emerald-300/[.06] p-3 text-xs text-emerald-100">{scheduleMessage}</div>}</Card>}
       {pageError&&<div role="alert" className="mb-4 rounded-xl border border-rose-300/10 bg-rose-400/[.06] p-3 text-xs text-rose-200">{pageError}</div>}
       {!postId&&scheduleMessage&&<div role="status" className="mb-4 rounded-xl border border-emerald-300/10 bg-emerald-300/[.06] p-3 text-xs text-emerald-100">{scheduleMessage}</div>}
       {publishingReadiness&&!publishingReadiness.live&&<div role="alert" className="mb-4 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100"><strong>Automatic publishing is not live.</strong> Facebook Page and Instagram posts will not reach Meta while the backend is in <code>{publishingReadiness.mode}</code> mode. Facebook Profile manual-share reminders still work because they do not use automatic Meta publishing.</div>}
