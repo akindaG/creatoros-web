@@ -18,7 +18,8 @@ type PlatformLabel = "Instagram" | "Facebook Page" | "Facebook Profile";
 
 function platformValue(platform:PlatformLabel):"instagram"|"facebook"|"facebook_profile" { return platform==="Facebook Page"?"facebook":platform==="Facebook Profile"?"facebook_profile":"instagram"; }
 function platformLabel(platform:string):PlatformLabel { return platform==="facebook"?"Facebook Page":platform==="facebook_profile"?"Facebook Profile":"Instagram"; }
-function kindFromUrl(url:string):"IMAGE"|"VIDEO" { return /\.mp4(?:$|\?)/i.test(url)?"VIDEO":"IMAGE"; }\nfunction autoPlatformLabel(platform:AutoPlatform){return platform==="facebook"?"Facebook Page":"Instagram";}
+function kindFromUrl(url:string):"IMAGE"|"VIDEO" { return /\.mp4(?:$|\?)/i.test(url)?"VIDEO":"IMAGE"; }
+function autoPlatformLabel(platform:AutoPlatform){return platform==="facebook"?"Facebook Page":"Instagram";}
 
 export default function ContentStudioPage() {
   const [title,setTitle] = useState("Untitled creator post");
@@ -69,7 +70,9 @@ export default function ContentStudioPage() {
   const count = caption.length;
   const selectedAsset=assets.find((asset)=>asset.id===selectedAssetId);
   const filteredAssets=useMemo(()=>assets.filter((asset)=>filter==="All media"||(filter==="Images"&&asset.kind==="IMAGE")||(filter==="Videos"&&asset.kind==="VIDEO")),[assets,filter]);
-  const activeAutoTargets=publishTargets.length?publishTargets:[platform==="Facebook Page"?"facebook":"instagram"];\n  const publishTargetText=activeAutoTargets.map(autoPlatformLabel).join(" + ");\n  const filterOptions:{label:Filter;count:number}[]=[
+  const activeAutoTargets=publishTargets.length?publishTargets:[platform==="Facebook Page"?"facebook":"instagram"];
+  const publishTargetText=activeAutoTargets.map(autoPlatformLabel).join(" + ");
+  const filterOptions:{label:Filter;count:number}[]=[
     {label:"All media",count:assets.length},
     {label:"Images",count:assets.filter(asset=>asset.kind==="IMAGE").length},
     {label:"Videos",count:assets.filter(asset=>asset.kind==="VIDEO").length},
