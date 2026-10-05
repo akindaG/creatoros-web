@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/app-shell";
 import { Card } from "@/components/ui";
@@ -10,7 +10,7 @@ import { apiFetch } from "@/lib/api";
 type Platform="Instagram"|"Facebook";
 type Account={id:string;platform:string;platform_account_id?:string|null;account_name:string;username?:string|null;status:string;created_at?:string};
 type Overview={platform_reach:Record<string,number>};
-type PublishingReadiness={mode:string;live:boolean;facebook_connected:boolean;facebook_page_id:string|null;facebook_page_name:string|null;scheduler:{running:boolean;mode:string};target_type:string};
+type PublishingReadiness={mode:string;live:boolean;facebook_connected:boolean;facebook_page_id:string|null;facebook_page_name:string|null;instagram_connected?:boolean;instagram_account_id?:string|null;instagram_username?:string|null;instagram_token_expires_at?:string|null;scheduler:{running:boolean;mode:string};target_type:string};
 const short=(value:number)=>value>=1_000_000?`${(value/1_000_000).toFixed(1)}M`:value>=1_000?`${(value/1_000).toFixed(1)}K`:String(value);
 
 export default function SocialAccountsPage(){
@@ -20,22 +20,21 @@ export default function SocialAccountsPage(){
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
   const [pending,setPending]=useState<Platform|null>(null);
-  const [connectPlatform,setConnectPlatform]=useState<Platform|null>(null);
   const [loading,setLoading]=useState(true);
 
   useEffect(()=>{const controller=new AbortController();Promise.all([apiFetch<Account[]>("/api/v1/social-accounts",{signal:controller.signal}),apiFetch<Overview>("/api/v1/analytics/overview",{signal:controller.signal}),apiFetch<PublishingReadiness>("/api/v1/publishing/readiness",{signal:controller.signal}).catch(()=>null)]).then(([connected,analytics,readiness])=>{setAccounts(connected);setPlatformReach(analytics.platform_reach);setPublishingReadiness(readiness);}).catch(requestError=>{if(!(requestError instanceof DOMException&&requestError.name==="AbortError"))setError(requestError instanceof Error?requestError.message:"Could not load social accounts");}).finally(()=>setLoading(false));return()=>controller.abort();},[]);
-  useEffect(()=>{if(typeof window==="undefined")return;const params=new URLSearchParams(window.location.search);const facebook=params.get("facebook");if(!facebook)return;const reason=params.get("reason");window.history.replaceState({},"",window.location.pathname);const timer=window.setTimeout(()=>{if(facebook==="connected")setMessage("Facebook Page connected successfully.");if(facebook==="error")setError(reason||"Facebook connection was cancelled or failed.");},0);return()=>window.clearTimeout(timer);},[]);
+  useEffect(()=>{if(typeof window==="undefined")return;const params=new URLSearchParams(window.location.search);const facebook=params.get("facebook");const instagram=params.get("instagram");if(!facebook&&!instagram)return;const reason=params.get("reason");window.history.replaceState({},"",window.location.pathname);const timer=window.setTimeout(()=>{if(instagram==="connected")setMessage("Instagram professional account connected successfully. CreatorOS can now use it for publishing, scheduling and approved insights.");if(instagram==="error")setError(reason||"Instagram connection was cancelled or failed.");if(facebook==="connected")setMessage("Facebook Page connected successfully.");if(facebook==="error")setError(reason||"Facebook connection was cancelled or failed.");},0);return()=>window.clearTimeout(timer);},[]);
   function accountFor(platform:Platform){return accounts.find(account=>account.platform.toLowerCase()===platform.toLowerCase());}
 
   async function beginConnect(platform:Platform){
-    if(platform!=="Facebook"){setConnectPlatform(platform);return;}
     setPending(platform);setError("");setMessage("");
     try{
-      const result=await apiFetch<{authorization_url:string}>("/api/v1/social-accounts/facebook/connect");
-      if(!result.authorization_url)throw new Error("CreatorOS did not receive a Facebook authorization URL.");
+      const provider=platform.toLowerCase();
+      const result=await apiFetch<{authorization_url:string}>(`/api/v1/social-accounts/${provider}/connect`);
+      if(!result.authorization_url)throw new Error(`CreatorOS did not receive a ${platform} authorization URL.`);
       window.location.assign(result.authorization_url);
     }catch(requestError){
-      setError(requestError instanceof Error?requestError.message:"Could not start Facebook connection");
+      setError(requestError instanceof Error?requestError.message:`Could not start ${platform} connection`);
       setPending(null);
     }
   }
@@ -45,15 +44,6 @@ export default function SocialAccountsPage(){
     setPending(platform);setError("");setMessage("");
     try{await apiFetch(`/api/v1/social-accounts/${existing.id}`,{method:"DELETE"});setAccounts(current=>current.filter(item=>item.id!==existing.id));setMessage(`${platform} disconnected successfully.`);}
     catch(requestError){setError(requestError instanceof Error?requestError.message:"Could not disconnect account");}
-    finally{setPending(null);}
-  }
-
-  async function connect(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();if(!connectPlatform)return;
-    const form=new FormData(event.currentTarget);const accountName=String(form.get("account_name")??"").trim();const username=String(form.get("username")??"").trim();const accessToken=String(form.get("access_token")??"").trim();
-    setPending(connectPlatform);setError("");setMessage("");
-    try{const created=await apiFetch<Account>("/api/v1/social-accounts",{method:"POST",body:JSON.stringify({platform:connectPlatform.toLowerCase(),account_name:accountName,platform_account_id:accountName,username:username||null,access_token:accessToken})});setAccounts(current=>[...current,created]);setMessage(`${connectPlatform} connected. The credential is encrypted by the CreatorOS backend before database storage.`);setConnectPlatform(null);}
-    catch(requestError){setError(requestError instanceof Error?requestError.message:"Could not connect account");}
     finally{setPending(null);}
   }
 
