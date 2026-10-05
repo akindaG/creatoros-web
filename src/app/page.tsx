@@ -694,9 +694,13 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-14 gap-y-3 text-xs text-[#748198] sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-10 gap-y-3 text-xs text-[#748198] sm:grid-cols-4">
             <a href="#product" className="hover:text-white">Product</a>
             <a href="#features" className="hover:text-white">Features</a>
+            <Link href="/privacy" className="hover:text-white">Privacy</Link>
+            <Link href="/data-deletion" className="hover:text-white">Data deletion</Link>
+            <Link href="/terms" className="hover:text-white">Terms</Link>
+            <a href="mailto:creators.help.ai@gmail.com" className="hover:text-white">Support</a>
             <a href="#workflow" className="hover:text-white">Workflow</a>
             <a href="#faq" className="hover:text-white">FAQ</a>
           </div>
