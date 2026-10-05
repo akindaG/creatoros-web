@@ -9,19 +9,23 @@ import { apiFetch, mediaUrl } from "@/lib/api";
 
 type Asset = { id:string; name:string; kind:"IMAGE"|"VIDEO"; size:string; url:string };
 type UploadResponse = { url:string; object_name:string; storage:string };
-type PublishResponse = { status:string; mode:string; external_id?:string|null; message?:string; published?:number; failed?:number; results?:Array<{platform:string;status:string;external_id?:string|null;detail?:string}> };\ntype PublishingReadiness = { live:boolean; mode:string; instagram_connected:boolean; facebook_connected:boolean };\ntype AutoPlatform = "instagram" | "facebook";
+type PublishResponse = { status:string; mode:string; external_id?:string|null; message?:string; published?:number; failed?:number; results?:Array<{platform:string;status:string;external_id?:string|null;detail?:string}> };
+type PublishingReadiness = { live:boolean; mode:string; instagram_connected:boolean; facebook_connected:boolean };
+type AutoPlatform = "instagram" | "facebook";
 type Post = { id:string; title:string; caption:string|null; media_url:string|null; platform:string; status:string; scheduled_time:string|null; created_at:string };
 type Filter = "All media" | "Images" | "Videos";
 type PlatformLabel = "Instagram" | "Facebook Page" | "Facebook Profile";
 
 function platformValue(platform:PlatformLabel):"instagram"|"facebook"|"facebook_profile" { return platform==="Facebook Page"?"facebook":platform==="Facebook Profile"?"facebook_profile":"instagram"; }
 function platformLabel(platform:string):PlatformLabel { return platform==="facebook"?"Facebook Page":platform==="facebook_profile"?"Facebook Profile":"Instagram"; }
-function kindFromUrl(url:string):"IMAGE"|"VIDEO" { return /\.mp4(?:$|\?)/i.test(url)?"VIDEO":"IMAGE"; }
+function kindFromUrl(url:string):"IMAGE"|"VIDEO" { return /\.mp4(?:$|\?)/i.test(url)?"VIDEO":"IMAGE"; }\nfunction autoPlatformLabel(platform:AutoPlatform){return platform==="facebook"?"Facebook Page":"Instagram";}
 
 export default function ContentStudioPage() {
   const [title,setTitle] = useState("Untitled creator post");
   const [caption,setCaption] = useState("");
-  const [platform,setPlatform] = useState<PlatformLabel>("Instagram");\n  const [publishTargets,setPublishTargets] = useState<AutoPlatform[]>(["instagram"]);\n  const [publishingReadiness,setPublishingReadiness] = useState<PublishingReadiness|null>(null);
+  const [platform,setPlatform] = useState<PlatformLabel>("Instagram");
+  const [publishTargets,setPublishTargets] = useState<AutoPlatform[]>(["instagram"]);
+  const [publishingReadiness,setPublishingReadiness] = useState<PublishingReadiness|null>(null);
   const [uploadedAssets,setUploadedAssets] = useState<Asset[]>([]);
   const [drafts,setDrafts] = useState<Post[]>([]);
   const [selectedAssetId,setSelectedAssetId] = useState("");
@@ -47,7 +51,8 @@ export default function ContentStudioPage() {
       const draftPlatform=sessionStorage.getItem("creatoros_draft_platform");
       if(draft){setCaption(draft);sessionStorage.removeItem("creatoros_draft_caption");}
       if(draftPlatform==="facebook"||draftPlatform==="instagram"||draftPlatform==="facebook_profile"){setPlatform(platformLabel(draftPlatform));sessionStorage.removeItem("creatoros_draft_platform");}
-      void loadDrafts();\n      void apiFetch<PublishingReadiness>("/api/v1/publishing/readiness").then(setPublishingReadiness).catch(()=>undefined);
+      void loadDrafts();
+      void apiFetch<PublishingReadiness>("/api/v1/publishing/readiness").then(setPublishingReadiness).catch(()=>undefined);
     });
     return()=>cancelAnimationFrame(frame);
   },[loadDrafts]);
@@ -64,13 +69,33 @@ export default function ContentStudioPage() {
   const count = caption.length;
   const selectedAsset=assets.find((asset)=>asset.id===selectedAssetId);
   const filteredAssets=useMemo(()=>assets.filter((asset)=>filter==="All media"||(filter==="Images"&&asset.kind==="IMAGE")||(filter==="Videos"&&asset.kind==="VIDEO")),[assets,filter]);
-  const filterOptions:{label:Filter;count:number}[]=[
+  const activeAutoTargets=publishTargets.length?publishTargets:[platform==="Facebook Page"?"facebook":"instagram"];\n  const publishTargetText=activeAutoTargets.map(autoPlatformLabel).join(" + ");\n  const filterOptions:{label:Filter;count:number}[]=[
     {label:"All media",count:assets.length},
     {label:"Images",count:assets.filter(asset=>asset.kind==="IMAGE").length},
     {label:"Videos",count:assets.filter(asset=>asset.kind==="VIDEO").length},
   ];
 
   function resetEditor(){setEditingPostId("");setTitle("Untitled creator post");setCaption("");setPlatform("Instagram");setPublishTargets(["instagram"]);setSelectedAssetId("");setManualSharePostId("");setMessage("");setError("");}
+
+  function choosePlatform(item:PlatformLabel){
+    setPlatform(item);
+    if(item==="Facebook Profile"){setPublishTargets([]);return;}
+    const target:AutoPlatform=item==="Facebook Page"?"facebook":"instagram";
+    setPublishTargets(current=>current.includes(target)?current:[...current,target]);
+  }
+
+  function togglePublishTarget(target:AutoPlatform){
+    const connected=target==="instagram"?publishingReadiness?.instagram_connected:publishingReadiness?.facebook_connected;
+    if(connected===false){setError(`Connect ${autoPlatformLabel(target)} first from Social Accounts.`);return;}
+    setError("");
+    setPublishTargets(current=>{
+      if(current.includes(target)){
+        if(current.length===1)return current;
+        return current.filter(item=>item!==target);
+      }
+      return [...current,target];
+    });
+  }
 
   function editDraft(post:Post){
     setEditingPostId(post.id);setTitle(post.title);setCaption(post.caption??"");setPlatform(platformLabel(post.platform));setPublishTargets(post.platform==="facebook"?["facebook"]:post.platform==="instagram"?["instagram"]:[]);setManualSharePostId("");
@@ -107,13 +132,21 @@ export default function ContentStudioPage() {
     if(!title.trim()){setError("Add a post title before publishing.");return;}
     const targetPlatform=platform;
     const isProfileShare=targetPlatform==="Facebook Profile";
-    if(!window.confirm(isProfileShare?"Prepare this post for your personal Facebook profile now? CreatorOS will copy the caption and open Facebook for you to finish the post.":`Publish this post to ${targetPlatform} now?`))return;
+    const targets:AutoPlatform[]=isProfileShare?[]:activeAutoTargets;
+    if(!isProfileShare&&targets.includes("instagram")&&!selectedAsset){setError("Instagram requires an image or video before publishing.");return;}
+    const confirmText=isProfileShare
+      ?"Prepare this post for your personal Facebook profile now? CreatorOS will copy the caption and open Facebook for you to finish the post."
+      :targets.length>1
+        ?`Publish this post to ${publishTargetText} with one action?`
+        :`Publish this post to ${publishTargetText} now?`;
+    if(!window.confirm(confirmText))return;
 
     const facebookWindow=isProfileShare?window.open("about:blank","creatoros-facebook-profile"):null;
     if(isProfileShare&&facebookWindow)facebookWindow.opener=null;
 
     setPublishing(true);setError("");setMessage("");
-    const payload={title:title.trim(),caption:caption.trim()||null,media_url:selectedAsset?.url??null,platform:platformValue(targetPlatform),status:"draft",scheduled_time:null};
+    const primaryPlatform=isProfileShare?"facebook_profile":targets[0];
+    const payload={title:title.trim(),caption:caption.trim()||null,media_url:selectedAsset?.url??null,platform:primaryPlatform,status:"draft",scheduled_time:null};
 
     try{
       let copied=false;
@@ -139,15 +172,27 @@ export default function ContentStudioPage() {
         return;
       }
 
-      const publishResult=await apiFetch<PublishResponse>(`/api/v1/publishing/posts/${post.id}`,{method:"POST"});
+      const publishResult=targets.length>1
+        ?await apiFetch<PublishResponse>(`/api/v1/publishing/posts/${post.id}/multi`,{method:"POST",body:JSON.stringify({platforms:targets})})
+        :await apiFetch<PublishResponse>(`/api/v1/publishing/posts/${post.id}`,{method:"POST"});
+
       await loadDrafts();
+      if(publishResult.mode!=="live"){
+        setError(`CreatorOS simulated this publish. Nothing was sent to ${publishTargetText}. Set SOCIAL_PUBLISH_MODE=live on the deployed backend and redeploy it.`);
+        return;
+      }
+      if(targets.length>1&&publishResult.failed){
+        const failedNames=(publishResult.results??[]).filter(item=>item.status!=="published").map(item=>autoPlatformLabel(item.platform as AutoPlatform));
+        setError(`Published to ${publishResult.published??0} platform(s), but ${failedNames.join(", ")||"one platform"} failed. The failed copy remains retryable as a draft.`);
+        await loadDrafts();
+        return;
+      }
       resetEditor();
-      if(publishResult.mode==="live")setMessage(`Post published to ${targetPlatform} successfully${publishResult.external_id?` · ${publishResult.external_id}`:""}.`);
-      else setError(`CreatorOS simulated this publish. Nothing was sent to ${targetPlatform}. Set SOCIAL_PUBLISH_MODE=live on the deployed backend and redeploy it.`);
+      setMessage(targets.length>1?`Published to ${publishTargetText} successfully.`:`Post published to ${publishTargetText} successfully${publishResult.external_id?` · ${publishResult.external_id}`:""}.`);
     }catch(requestError){
       if(facebookWindow&&!facebookWindow.closed)facebookWindow.close();
       await loadDrafts();
-      setError(requestError instanceof Error?requestError.message:`Could not publish to ${targetPlatform}`);
+      setError(requestError instanceof Error?requestError.message:`Could not publish to ${isProfileShare?"Facebook Profile":publishTargetText}`);
     }finally{
       setPublishing(false);
     }
@@ -187,7 +232,7 @@ export default function ContentStudioPage() {
 
         <Card className="p-5"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-white">Media assets</h2><p className="muted mt-1 text-xs">Uploaded media and media attached to saved drafts</p></div><div className="pill">{filteredAssets.length} assets</div></div>{filteredAssets.length?<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{filteredAssets.map((item,index)=><button key={item.id} onClick={()=>setSelectedAssetId(item.id)} aria-pressed={selectedAssetId===item.id} className={`group relative aspect-square overflow-hidden rounded-xl border text-left ${selectedAssetId===item.id?"border-violet-300/50 shadow-[0_0_22px_rgba(124,58,237,.12)]":"border-white/[.055]"}`}><div className={`absolute inset-0 bg-gradient-to-br ${index%3===0?"from-violet-500/35 via-[#101a31] to-emerald-400/10":index%3===1?"from-fuchsia-400/20 via-[#0e1427] to-cyan-400/10":"from-indigo-400/20 via-[#10162a] to-rose-400/10"}`} style={item.kind==="IMAGE"?{backgroundImage:`linear-gradient(to top, rgba(2,6,23,.88), rgba(2,6,23,.08)), url(${mediaUrl(item.url)})`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}/><div className="premium-grid absolute inset-0 opacity-30"/><div className="absolute inset-x-0 bottom-0 p-3"><div className="truncate text-xs font-semibold text-white">{item.name}</div><div className="mt-1 text-[9px] text-[#a2acc0]">{item.kind} · {item.size}</div></div></button>)}</div>:<EmptyState title="Your media library is empty" description="Upload an image or MP4. CreatorOS will store it through the backend and attach its URL to your draft."/>}</Card>
 
-        <Card className="h-fit p-5"><div className="flex items-center justify-between border-b border-white/[.055] pb-4"><h2 className="font-semibold text-white">Post editor</h2><span className="pill">{editingPostId?"Editing draft":"New draft"}</span></div><label className="mt-5 block"><span className="label mb-2 block">Post title</span><input className="field" value={title} onChange={event=>setTitle(event.target.value)} maxLength={200}/></label><div className="mt-5"><div className="label mb-2">Platform</div><div className="flex flex-wrap gap-2">{(["Instagram","Facebook Page","Facebook Profile"] as PlatformLabel[]).map(item=><button key={item} onClick={()=>setPlatform(item)} aria-pressed={platform===item} className={`pill ${platform===item?"border-violet-300/35 bg-violet-500/10 text-violet-100":""}`}><SocialLogo platform={platformValue(item)} className="h-5 w-5 rounded-md" />{item}</button>)}</div></div>{platform==="Facebook Profile"&&<div className="mt-4 rounded-xl border border-blue-300/10 bg-blue-300/[.04] p-3 text-[10px] leading-5 text-blue-100"><strong>Personal profile mode:</strong> Meta does not allow CreatorOS to silently publish to personal timelines. CreatorOS saves the post, copies the caption, opens Facebook, and lets you complete the share yourself. Scheduled profile posts become “Ready to share” in Calendar at the selected time.</div>}<div className="mt-5"><label className="label mb-2 block">Caption</label><textarea className="field min-h-44 resize-none text-sm leading-6" value={caption} onChange={event=>setCaption(event.target.value)} maxLength={2200}/><div className="mt-2 flex justify-between text-[10px] text-[#66738b]"><span>{count} / 2200 characters</span><Link href="/ai-assistant" className="text-violet-300">✦ Improve with AI</Link></div></div><div className="mt-5 rounded-xl border border-white/[.055] bg-white/[.02] p-3"><div className="flex items-center justify-between"><div className="label">Attached media</div>{selectedAsset&&<button onClick={()=>setSelectedAssetId("")} className="text-[10px] text-[#7d899f]">Remove</button>}</div><div className="premium-grid mt-2 flex h-24 items-end rounded-lg bg-gradient-to-br from-violet-500/20 to-emerald-300/[.05] p-3" style={selectedAsset?.kind==="IMAGE"?{backgroundImage:`linear-gradient(to top, rgba(2,6,23,.9), rgba(2,6,23,.08)), url(${mediaUrl(selectedAsset.url)})`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}><span className="rounded-md bg-[#020617]/70 px-2 py-1 text-[10px] text-violet-100">{selectedAsset?.name??"No media selected"}</span></div></div><div className="mt-5 grid gap-2"><button onClick={saveDraft} disabled={saving||publishing} className="primary-btn">{saving?"Saving...":editingPostId?"Save changes":"Save draft"}</button><button onClick={publishNow} disabled={saving||publishing||uploading} className="secondary-btn">{publishing?"Working...":platform==="Facebook Profile"?"Share to Facebook Profile":platform==="Facebook Page"?"Post to Facebook Page now":`Post to ${platform} now`}</button>{manualSharePostId&&<button onClick={markManualShared} disabled={publishing} className="secondary-btn">✓ I&apos;ve shared it on Facebook</button>}{editingPostId?<Link href={`/calendar?post=${encodeURIComponent(editingPostId)}`} className="secondary-btn">Schedule post</Link>:<button className="secondary-btn" disabled title="Save the draft before scheduling">Save before scheduling</button>}</div></Card>
+        <Card className="h-fit p-5"><div className="flex items-center justify-between border-b border-white/[.055] pb-4"><h2 className="font-semibold text-white">Post editor</h2><span className="pill">{editingPostId?"Editing draft":"New draft"}</span></div><label className="mt-5 block"><span className="label mb-2 block">Post title</span><input className="field" value={title} onChange={event=>setTitle(event.target.value)} maxLength={200}/></label><div className="mt-5"><div className="label mb-2">Publishing mode</div><div className="flex flex-wrap gap-2">{(["Instagram","Facebook Page","Facebook Profile"] as PlatformLabel[]).map(item=><button key={item} onClick={()=>choosePlatform(item)} aria-pressed={platform===item} className={`pill ${platform===item?"border-violet-300/35 bg-violet-500/10 text-violet-100":""}`}><SocialLogo platform={platformValue(item)} className="h-5 w-5 rounded-md" />{item}</button>)}</div></div>{platform!=="Facebook Profile"&&<div className="mt-4 rounded-xl border border-white/[.055] bg-white/[.018] p-3"><div className="flex items-center justify-between gap-3"><div><div className="label">Publish simultaneously</div><div className="mt-1 text-[10px] leading-5 text-[#77839a]">Select every connected channel that should receive this content from one Post Now action.</div></div><span className="pill !py-1">{activeAutoTargets.length} selected</span></div><div className="mt-3 grid grid-cols-2 gap-2">{(["instagram","facebook"] as AutoPlatform[]).map(target=>{const connected=target==="instagram"?publishingReadiness?.instagram_connected:publishingReadiness?.facebook_connected;const selected=activeAutoTargets.includes(target);return <button key={target} type="button" disabled={connected===false} onClick={()=>togglePublishTarget(target)} className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-[10px] font-semibold ${selected?"border-violet-300/30 bg-violet-500/10 text-violet-100":"border-white/[.06] text-[#8290a8]"} ${connected===false?"cursor-not-allowed opacity-45":""}`}><SocialLogo platform={target} className="h-5 w-5 rounded-md"/><span>{autoPlatformLabel(target)}<span className="mt-0.5 block text-[8px] font-normal text-[#66738b]">{connected===false?"Not connected":selected?"Selected":"Available"}</span></span></button>})}</div></div>}{platform==="Facebook Profile"&&<div className="mt-4 rounded-xl border border-blue-300/10 bg-blue-300/[.04] p-3 text-[10px] leading-5 text-blue-100"><strong>Personal profile mode:</strong> Meta does not allow CreatorOS to silently publish to personal timelines. CreatorOS saves the post, copies the caption, opens Facebook, and lets you complete the share yourself. Scheduled profile posts become “Ready to share” in Calendar at the selected time.</div>}<div className="mt-5"><label className="label mb-2 block">Caption</label><textarea className="field min-h-44 resize-none text-sm leading-6" value={caption} onChange={event=>setCaption(event.target.value)} maxLength={2200}/><div className="mt-2 flex justify-between text-[10px] text-[#66738b]"><span>{count} / 2200 characters</span><Link href="/ai-assistant" className="text-violet-300">✦ Improve with AI</Link></div></div><div className="mt-5 rounded-xl border border-white/[.055] bg-white/[.02] p-3"><div className="flex items-center justify-between"><div className="label">Attached media</div>{selectedAsset&&<button onClick={()=>setSelectedAssetId("")} className="text-[10px] text-[#7d899f]">Remove</button>}</div><div className="premium-grid mt-2 flex h-24 items-end rounded-lg bg-gradient-to-br from-violet-500/20 to-emerald-300/[.05] p-3" style={selectedAsset?.kind==="IMAGE"?{backgroundImage:`linear-gradient(to top, rgba(2,6,23,.9), rgba(2,6,23,.08)), url(${mediaUrl(selectedAsset.url)})`,backgroundSize:"cover",backgroundPosition:"center"}:undefined}><span className="rounded-md bg-[#020617]/70 px-2 py-1 text-[10px] text-violet-100">{selectedAsset?.name??"No media selected"}</span></div></div><div className="mt-5 grid gap-2"><button onClick={saveDraft} disabled={saving||publishing} className="primary-btn">{saving?"Saving...":editingPostId?"Save changes":"Save draft"}</button><button onClick={publishNow} disabled={saving||publishing||uploading} className="secondary-btn">{publishing?"Working...":platform==="Facebook Profile"?"Share to Facebook Profile":activeAutoTargets.length>1?`Post now to ${activeAutoTargets.length} platforms`:`Post to ${publishTargetText} now`}</button>{manualSharePostId&&<button onClick={markManualShared} disabled={publishing} className="secondary-btn">✓ I&apos;ve shared it on Facebook</button>}{editingPostId?<Link href={`/calendar?post=${encodeURIComponent(editingPostId)}&targets=${encodeURIComponent(activeAutoTargets.join(","))}`} className="secondary-btn">{activeAutoTargets.length>1?`Schedule ${activeAutoTargets.length} platforms`:"Schedule post"}</Link>:<button className="secondary-btn" disabled title="Save the draft before scheduling">Save before scheduling</button>}</div></Card>
       </div>
     </AppShell>
   );
