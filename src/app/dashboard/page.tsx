@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import AppShell from "@/components/app-shell";
 import { Card, EmptyState, MetricCard, SparkChart } from "@/components/ui";
+import { SocialLogo } from "@/components/social-logo";
 import { apiFetch } from "@/lib/api";
 
 type Metrics = { followers:number; reach:number; likes:number; comments:number; shares:number; engagement_rate:number; growth_rate:number; posts_count:number };
@@ -83,16 +84,16 @@ export default function DashboardPage() {
           <SparkChart values={overview.series.map(point=>point.reach)} />
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-white/[.05] bg-white/[.015] p-3"><div className="text-[9px] font-bold uppercase tracking-[.12em] text-[#5e6b82]">Data health</div><div className={`mt-2 text-sm font-semibold ${dataHealth==="Strong"?"text-[#4edea3]":dataHealth==="Building"?"text-amber-300":"text-[#8a96ac]"}`}>{dataHealth}</div></div>
-            <div className="rounded-xl border border-white/[.05] bg-white/[.015] p-3"><div className="text-[9px] font-bold uppercase tracking-[.12em] text-[#5e6b82]">Instagram reach</div><div className="mt-2 text-sm font-semibold text-white">{short(instagramReach)}</div></div>
-            <div className="rounded-xl border border-white/[.05] bg-white/[.015] p-3"><div className="text-[9px] font-bold uppercase tracking-[.12em] text-[#5e6b82]">Facebook reach</div><div className="mt-2 text-sm font-semibold text-white">{short(facebookReach)}</div></div>
+            <div className="rounded-xl border border-white/[.05] bg-white/[.015] p-3"><div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[.12em] text-[#5e6b82]"><SocialLogo platform="instagram" className="h-5 w-5 rounded-md" />Instagram reach</div><div className="mt-2 text-sm font-semibold text-white">{short(instagramReach)}</div></div>
+            <div className="rounded-xl border border-white/[.05] bg-white/[.015] p-3"><div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[.12em] text-[#5e6b82]"><SocialLogo platform="facebook" className="h-5 w-5 rounded-md" />Facebook reach</div><div className="mt-2 text-sm font-semibold text-white">{short(facebookReach)}</div></div>
           </div>
         </Card>
 
         <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between"><div><div className="kicker">Channel mix</div><h2 className="mt-1 font-semibold text-white">Where reach is coming from</h2></div><span className="pill">{short(trackedReach)} tracked</span></div>
           <div className="mt-7 space-y-5">
-            <div><div className="flex items-center justify-between text-xs"><span className="text-[#8d99af]">Instagram</span><span className="font-semibold text-violet-200">{instagramShare}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[.045]"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400" style={{width:`${instagramShare}%`}} /></div></div>
-            <div><div className="flex items-center justify-between text-xs"><span className="text-[#8d99af]">Facebook</span><span className="font-semibold text-blue-200">{facebookShare}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[.045]"><div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400" style={{width:`${facebookShare}%`}} /></div></div>
+            <div><div className="flex items-center justify-between text-xs"><span className="flex items-center gap-2 text-[#8d99af]"><SocialLogo platform="instagram" className="h-5 w-5 rounded-md" />Instagram</span><span className="font-semibold text-violet-200">{instagramShare}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[.045]"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-400" style={{width:`${instagramShare}%`}} /></div></div>
+            <div><div className="flex items-center justify-between text-xs"><span className="flex items-center gap-2 text-[#8d99af]"><SocialLogo platform="facebook" className="h-5 w-5 rounded-md" />Facebook</span><span className="font-semibold text-blue-200">{facebookShare}%</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[.045]"><div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400" style={{width:`${facebookShare}%`}} /></div></div>
           </div>
           <div className="mt-7 rounded-xl border border-white/[.05] bg-white/[.015] p-4"><div className="text-[10px] font-semibold text-[#77849b]">What this means</div><p className="muted mt-2 text-xs leading-5">As you add analytics snapshots, CreatorOS uses this performance history to improve posting-time and growth recommendations.</p></div>
         </Card>
@@ -101,7 +102,7 @@ export default function DashboardPage() {
       <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr]">
         <Card className="p-5 sm:p-6">
           <div className="mb-4 flex items-center justify-between"><div><div className="kicker">Top content</div><h2 className="mt-1 font-semibold text-white">Posts earning attention</h2></div><Link className="text-xs font-semibold text-violet-300 hover:text-violet-200" href="/analytics">View all ↗</Link></div>
-          {overview.top_posts.length?<div className="space-y-2">{overview.top_posts.slice(0,4).map((post,index)=><div key={post.post_id} className="panel-hover flex items-center gap-3 rounded-xl border border-white/[.045] bg-white/[.015] p-3"><div className="grid h-11 w-11 place-items-center rounded-xl border border-violet-300/10 bg-gradient-to-br from-violet-500/18 to-cyan-400/[.035] text-xs font-bold text-violet-200">0{index+1}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-[#e8edfb]">{post.title}</div><div className="mt-1 text-[9px] uppercase tracking-[.1em] text-[#66738c]">{post.platform} · {short(post.reach)} reach</div></div><div className="rounded-lg bg-emerald-300/[.055] px-2.5 py-1.5 text-xs font-semibold text-[#4edea3]">{post.engagement_rate.toFixed(1)}%</div></div>)}</div>:<EmptyState title="No ranked posts yet" description="Add analytics to published posts and CreatorOS will rank your strongest content here."/>}
+          {overview.top_posts.length?<div className="space-y-2">{overview.top_posts.slice(0,4).map((post,index)=><div key={post.post_id} className="panel-hover flex items-center gap-3 rounded-xl border border-white/[.045] bg-white/[.015] p-3"><div className="grid h-11 w-11 place-items-center rounded-xl border border-violet-300/10 bg-gradient-to-br from-violet-500/18 to-cyan-400/[.035] text-xs font-bold text-violet-200">0{index+1}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-[#e8edfb]">{post.title}</div><div className="mt-1 flex items-center gap-1.5 text-[9px] uppercase tracking-[.1em] text-[#66738c]"><SocialLogo platform={post.platform} className="h-4 w-4 rounded-[5px]" />{post.platform==="facebook"?"Facebook":post.platform==="facebook_profile"?"Facebook Profile":"Instagram"} · {short(post.reach)} reach</div></div><div className="rounded-lg bg-emerald-300/[.055] px-2.5 py-1.5 text-xs font-semibold text-[#4edea3]">{post.engagement_rate.toFixed(1)}%</div></div>)}</div>:<EmptyState title="No ranked posts yet" description="Add analytics to published posts and CreatorOS will rank your strongest content here."/>}
         </Card>
 
         <div className="grid gap-4 sm:grid-cols-2">
