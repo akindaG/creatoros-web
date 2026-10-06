@@ -33,6 +33,7 @@ const navGroups: NavGroup[] = [
       { href: "/calendar", label: "Calendar", icon: "▦", description: "Schedule and publishing queue" },
       { href: "/analytics", label: "Analytics", icon: "⌁", description: "Performance and reach trends" },
       { href: "/growth-insights", label: "Growth Insights", icon: "↗", description: "Best times and recommendations" },
+      { href: "/search-intelligence", label: "Search Intelligence", icon: "⌕", description: "SEO and AI-search readiness" },
     ],
   },
   {
