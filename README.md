@@ -1,6 +1,20 @@
+<div align="center">
+
 # CreatorOS AI Web
 
-Next.js frontend for CreatorOS AI, an AI-powered Social Growth Intelligence Platform.
+### Next.js product interface for an AI-powered social growth platform
+
+![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+
+</div>
+
+This repository contains the **web product surface** for CreatorOS AI. It connects to the FastAPI backend and implements authentication, content workflows, AI-assisted creation, social connections, scheduling, analytics, growth insights, and account settings.
+
+> **Portfolio role:** evidence of full-stack integration and translating backend capabilities into a coherent user-facing workflow.
+
 
 ## Project repositories
 
