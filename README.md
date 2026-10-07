@@ -84,15 +84,14 @@ The UI also exposes publishing readiness so users can distinguish simulated publ
 
 ## AI behavior
 
-The web client does not call Gemini or Ollama directly. It uses the FastAPI AI endpoints.
+The web client does not call Gemini directly. It uses the FastAPI AI endpoints.
 
-The backend can select:
+The backend AI service uses:
 
-- Gemini
-- Ollama with Qwen 3
+- Google Gemini for caption generation, hashtag generation, and content analysis
 - deterministic fallback when enabled
 
-This keeps provider details out of the frontend workflow.
+This keeps AI service details out of the frontend workflow.
 
 ## Design direction
 
